@@ -12,9 +12,10 @@
 // set, later it will prefer a doctor-saved prescription without any
 // UI change here.
 
-import { useEffect, useMemo, useState, use as usePromise } from "react";
+import { useCallback, useEffect, useMemo, useState, use as usePromise } from "react";
 import Link from "next/link";
-import { ArrowUpRight, LineChart, Pencil, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowUpRight, LineChart, Pencil, PlayCircle, Sparkles } from "lucide-react";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +24,12 @@ import { groupExercisesByJoint } from "@/lib/rehab/exerciseCatalog";
 import { useRecommendations } from "@/lib/rehab/useRecommendations";
 import { PrescriptionEditor } from "@/components/rehab/PrescriptionEditor";
 import { getPatient, type PatientDTO } from "@/lib/patients";
+import {
+  encodeSequence,
+  newSequenceId,
+  runnerUrl,
+  type SequenceStep,
+} from "@/lib/rehab/sequence";
 
 export default function PatientRehabPage({
   params,
@@ -45,6 +52,37 @@ export default function PatientRehabPage({
 function Content({ patientId }: { patientId: string }) {
   const groups = useMemo(() => groupExercisesByJoint(), []);
   const recs = useRecommendations(patientId);
+  const router = useRouter();
+
+  // Start the whole prescribed list as one session. The queue is the
+  // recommendation order — doctor-authored when a prescription exists,
+  // auto-ranked otherwise — and it is handed to the first exercise's
+  // own page rather than to a runner, because the exercise pages own
+  // the screen. See lib/rehab/sequence.ts.
+  //
+  // Side is NOT chosen here: every exercise asks for its own, using
+  // the picker it already ships with (and marching for its duration).
+  const startSession = useCallback(() => {
+    // One step per prescribed SIDE, not per exercise: an exercise set
+    // to both sides has to run twice, because the session has no
+    // picker and a single step could only ever train one of them.
+    //
+    // Where no side was prescribed the step carries null and the page
+    // asks, exactly as a standalone visit does — that covers bilateral
+    // exercises and any prescription written before sides existed.
+    const steps: SequenceStep[] = recs.recommended.flatMap((r) => {
+      const sides = recs.sides[r.slug];
+      if (!sides || sides.length === 0) {
+        return [{ slug: r.slug, side: null }] as SequenceStep[];
+      }
+      return sides.map((side) => ({ slug: r.slug, side }));
+    });
+    if (steps.length === 0) return;
+    // One route for the whole session — see app/rehab/auto/run. Moving
+    // between exercises by route cost tens of seconds each time.
+    const seq = encodeSequence(steps);
+    router.push(runnerUrl({ patientId, seq, sid: newSequenceId() }));
+  }, [recs.recommended, recs.sides, patientId, router]);
 
   const [patient, setPatient] = useState<PatientDTO | null>(null);
   const [editing, setEditing] = useState(false);
@@ -87,12 +125,14 @@ function Content({ patientId }: { patientId: string }) {
         recs={recs}
         patientName={patient?.name ?? null}
         onEdit={() => setEditing(true)}
+        onStart={startSession}
       />
 
       {editing && (
         <PrescriptionEditor
           patientName={patient?.name ?? null}
           currentSlugs={recs.slugs}
+          currentSides={recs.sides}
           source={recs.source}
           reasonsBySlug={recs.bySlug}
           saving={recs.saving}
@@ -194,10 +234,13 @@ function RecommendedStrip({
   recs,
   patientName,
   onEdit,
+  onStart,
 }: {
   recs: ReturnType<typeof useRecommendations>;
   patientName: string | null;
   onEdit: () => void;
+  /** Play the whole prescribed list back to back. */
+  onStart: () => void;
 }) {
   const nameLabel = patientName?.trim() ? patientName : "this patient";
 
@@ -280,11 +323,25 @@ function RecommendedStrip({
             .
           </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={onEdit}>
-          <Pencil className="h-4 w-4" />
-          Edit
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* The whole prescribed list, back to back. Sits beside Edit
+              rather than replacing the per-card links: a doctor who
+              wants one exercise still clicks that card. */}
+          <Button size="sm" onClick={onStart}>
+            <PlayCircle className="h-4 w-4" />
+            Start session
+          </Button>
+          <Button variant="secondary" size="sm" onClick={onEdit}>
+            <Pencil className="h-4 w-4" />
+            Edit
+          </Button>
+        </div>
       </div>
+      <p className="mt-2 text-xs text-muted">
+        Plays the whole list back to back on a countdown, once per
+        prescribed side. Exercises with a side set start straight away;
+        the rest ask first. One combined report saves at the end.
+      </p>
       <ul className="mt-4 grid gap-2 md:grid-cols-2 lg:grid-cols-3">
         {top.map((rec) => {
           const firstReason = rec.reasons[0]?.reason ?? rec.note;
@@ -295,6 +352,14 @@ function RecommendedStrip({
             >
               <p className="text-sm font-semibold text-foreground">
                 {humanizeSlug(rec.slug)}
+                {(recs.sides[rec.slug] ?? []).map((side) => (
+                  <span
+                    key={side}
+                    className="ml-1.5 rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent"
+                  >
+                    {side}
+                  </span>
+                ))}
               </p>
               {firstReason && (
                 <p className="mt-0.5 text-xs text-muted">

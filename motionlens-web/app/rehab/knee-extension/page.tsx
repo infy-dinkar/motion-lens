@@ -1,19 +1,18 @@
 "use client";
 // K3 — Terminal Knee Extension to Target.
 //
-// Mechanic: Target-Reach (lib/rehab/mechanics.ts targetReachStep +
-// spawnReachTarget). Cursor is in [0..1] × [0..1] CSS-y-down coords
-// — same space TargetReachShell expects.
+// Mechanic: Rep-Count Gate, via RepCountShell (which is what drives
+// lib/rehab/mechanics.ts repCountStep — this file imports neither the
+// engine nor any cursor code). One rep closes when the knee extends
+// past topThreshold 150° and returns below depthThreshold 115° with
+// at least minAmplitude 25° of excursion. TARGET_REPS auto-completes.
 //
-// Mapping — the shared clinical metric IS the game control:
-//   extensionNorm ← clamp((180 − flexion) / 180, 0, 1)
-//   cursor.y      ← 1 − extensionNorm  (extension grows ⇒ y drops ⇒
-//                                       cursor rises toward top
-//                                       targets — natural for an
-//                                       "extend to reach" exercise)
-//   cursor.x      ← test-side ankle x, normalised + mirrored to
-//                  match the selfie-skeleton overlay (keeps the
-//                  feel of "cursor follows my foot")
+// It was Target-Reach, with this same angle driving a cursor at
+// spawning targets. Commit 7ebb81b replaced that across five
+// exercises: under pose latency the cursor lagged the leg badly
+// enough to be frustrating, and the game never auto-saved. The
+// measured signal is unchanged, so sessions from before and after
+// remain comparable.
 //
 // computeKneeAngle returns FLEXION:
 //   • Full extension (knee straight) → flexion ≈ 0°
@@ -25,8 +24,7 @@
 //
 // Reuses (no modifications):
 //   • computeKneeAngle (lib/biomech/knee-live.ts) — pure helper
-//   • RehabCameraShell, TargetReachShell, targetReachStep,
-//     spawnReachTarget — rehab mechanic library
+//   • RehabCameraShell, RepCountShell — rehab mechanic library
 //   • LM_LIVE ankle indices
 //   • usePoseDetectionLive, useCamera, usePatientContext
 
@@ -46,6 +44,11 @@ import {
   AutoFlowCountdownOverlay,
   AutoFlowFooter,
 } from "@/components/rehab/mechanics/AutoFlowChrome";
+import {
+  SequenceNext,
+  SequenceStrip,
+} from "@/components/rehab/SequenceChrome";
+import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { computeKneeAngle } from "@/lib/biomech/knee-live";
@@ -95,7 +98,7 @@ export default function KneeExtensionPage() {
   );
 }
 
-function Inner() {
+export function Inner() {
   const [side, setSide] = useState<Side | null>(null);
   // Live knee extension (180 − flexion) — feeds both the on-camera
   // overlay AND the rep counter (signal).
@@ -117,6 +120,22 @@ function Inner() {
   const [elapsedSec, setElapsedSec] = useState(0);
 
   const { patient, isDoctorFlow } = usePatientContext();
+  // Prescribed-session position, or an inert object on a normal
+  // standalone visit. Never gates the exercise itself — the page's
+  // own side / duration picker still runs exactly as it always has.
+  const seq = useRehabSequence();
+
+  // A prescribed session supplies the side, so the picker is skipped
+  // and the exercise opens straight into its countdown. Applied ONCE:
+  // if the patient exits, the picker comes back rather than the
+  // exercise restarting under them.
+  const [autoStarted, setAutoStarted] = useState(false);
+  useEffect(() => {
+    if (seq.side && !autoStarted) {
+      setAutoStarted(true);
+      setSide(seq.side);
+    }
+  }, [seq.side, autoStarted]);
 
   const sessionStartRef = useRef<number>(performance.now());
   const repStateRef = useRef<RepCountState | null>(null);
@@ -144,7 +163,7 @@ function Inner() {
     setReps(0);
     setElapsedSec(0);
     sessionStartRef.current = performance.now();
-  });
+  }, seq.countdownSec);
 
   // Auto-complete once the patient hits the rep target.
   const handleSnapshot = useCallback(
@@ -298,7 +317,13 @@ function Inner() {
             </Link>
           </div>
 
-          {!side ? <SidePicker onPick={setSide} /> : null}
+          <SequenceStrip seq={seq} />
+
+          {/* Skipped on the way in when the prescription named a
+              side; shown again if the patient exits. */}
+          {!side && (autoStarted || !seq.side) ? (
+            <SidePicker onPick={setSide} />
+          ) : null}
 
           {side && (
             <LiveModeLayout
@@ -408,11 +433,20 @@ function Inner() {
                   )}
 
                   <div className="no-pdf">
-                    <AutoFlowFooter
-                      complete={sessionPhase === "complete"}
-                      buildPayload={buildRehabPayload}
-                      completeHint={`${TARGET_REPS} reps done — saving to record automatically.`}
-                    />
+                    {/* A prescribed session stashes this result and moves on;
+                        the combined report saves at the end. A standalone
+                        visit keeps today's per-exercise auto-save. */}
+                    {seq.inSequence ? (
+                      sessionPhase === "complete" && (
+                        <SequenceNext seq={seq} buildPayload={buildRehabPayload} />
+                      )
+                    ) : (
+                      <AutoFlowFooter
+                        complete={sessionPhase === "complete"}
+                        buildPayload={buildRehabPayload}
+                        completeHint={`${TARGET_REPS} reps done — saving to record automatically.`}
+                      />
+                    )}
                   </div>
                 </>
               )}

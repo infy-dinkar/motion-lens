@@ -34,6 +34,10 @@ import {
 } from "react";
 import { Maximize2, Minimize2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import {
+  liveLayoutMounted,
+  liveLayoutUnmounted,
+} from "@/lib/live/fullscreenPresence";
 
 interface LiveModeLayoutProps {
   /** Exercise / test title shown in the header. */
@@ -98,28 +102,33 @@ export function LiveModeLayout({
   useEffect(() => {
     if (mode !== "expanded") return;
     if (document.fullscreenElement) return;
-    const el = containerRef.current;
-    if (!el) return;
-    const r = el.requestFullscreen?.();
+    // documentElement, not this layout's own container: a sequence
+    // runner swaps the exercise component underneath us, and a
+    // container that leaves the DOM takes fullscreen with it. The
+    // <html> element outlives every swap, and `fixed inset-0` below
+    // makes the two look identical.
+    const r = document.documentElement.requestFullscreen?.();
     if (r && typeof r.catch === "function") r.catch(() => {});
   }, [mode]);
 
-  // On unmount, exit browser fullscreen so the parent page comes
-  // back in a clean state.
+  // Give fullscreen back when the live view goes away — but not on the
+  // unmount itself. A session swap and a StrictMode remount both
+  // unmount this layout and mount another within milliseconds, and the
+  // newcomer could not ask for fullscreen again (no user activation).
+  // fullscreenPresence defers the exit briefly and cancels it if a
+  // layout arrives in time. See that file.
   useEffect(() => {
-    return () => {
-      if (document.fullscreenElement) {
-        document.exitFullscreen?.().catch(() => {});
-      }
-    };
-  }, []);
+    if (mode !== "expanded") return;
+    liveLayoutMounted();
+    return () => liveLayoutUnmounted();
+  }, [mode]);
 
   const toggleFs = useCallback(async () => {
     try {
       if (document.fullscreenElement) {
         await document.exitFullscreen();
-      } else if (containerRef.current) {
-        await containerRef.current.requestFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
       }
     } catch {
       // Some browsers reject the fullscreen request silently.

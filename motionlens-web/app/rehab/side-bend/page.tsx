@@ -1,30 +1,20 @@
 "use client";
 // B3 — Side Bend (Lateral Trunk Flexion).
 //
-// Mechanic: Target-Reach (lib/rehab/mechanics.ts targetReachStep +
-// spawnReachTarget). Cursor in normalised [0..1] × [0..1] CSS-y-down
-// — same space TargetReachShell expects.
+// Mechanic: bilateral rep count, hand-rolled in this file — no
+// mechanic shell and nothing from lib/rehab/mechanics, though the
+// result is saved as mechanic_id "rep_count" alongside the
+// shell-driven exercises. The signed lateral-flexion angle is
+// EMA-smoothed, and touching BOTH sides past REP_REACH 12° counts as
+// one full cycle. TARGET_REPS auto-completes.
 //
-// Bilateral movement — patient bends to either side; cursor moves
-// accordingly via SIGNED math (positive angle = right bend).
+// Bilateral by design: the patient bends to either side, and the
+// helper returns POSITIVE for an anatomical-right bend.
 //
-// Cursor mapping — single signal (lateral flexion) drives both axes
-// so the rectangular play area gets meaningful coverage:
-//
-//   angle = computeLateralTrunkFlexionDeg(kp)   // signed
-//                                               // +25° = full right bend
-//                                               // −25° = full left bend
-//   cursor.x = 0.5 + clamp(angle / (2 × MAX), −0.45, +0.45)
-//                                               // signed lateral shift
-//   cursor.y = 1 − clamp(|angle| / MAX, 0, 0.85)
-//                                               // magnitude → height
-//                                               // neutral ⇒ y = 1.0 (bottom)
-//                                               // max bend ⇒ y ≈ 0.15 (top)
-//
-// Trajectory: at rest cursor sits at (0.5, 1.0) bottom-centre. As
-// the patient bends right, the cursor sweeps up-and-right; bend
-// left, up-and-left. Targets spawning anywhere in [0.15, 0.85] ×
-// [0.15, 0.85] are reachable across the natural ROM arc.
+// It was Target-Reach, with this same signed angle driving a cursor
+// at spawning targets. Commit 7ebb81b replaced that across five
+// exercises: under pose latency the cursor lagged the trunk badly
+// enough to be frustrating, and the game never auto-saved.
 //
 // Mirror correctness: the camera shell renders a selfie-mirror
 // (patient's right appears on screen-right). The helper returns
@@ -33,8 +23,7 @@
 // directional feel without extra negation.
 //
 // Reuses (no modifications):
-//   • TargetReachShell, targetReachStep, spawnReachTarget,
-//     RehabCameraShell
+//   • RehabCameraShell
 //   • computeLateralTrunkFlexionDeg — NEW pure fn in poseMetrics
 //   • usePatientContext
 
@@ -53,6 +42,11 @@ import {
   AutoFlowCountdownOverlay,
   AutoFlowFooter,
 } from "@/components/rehab/mechanics/AutoFlowChrome";
+import {
+  SequenceNext,
+  SequenceStrip,
+} from "@/components/rehab/SequenceChrome";
+import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { computeLateralTrunkFlexionDeg } from "@/lib/rehab/poseMetrics";
@@ -87,7 +81,7 @@ export default function SideBendExercisePage() {
   );
 }
 
-function Inner() {
+export function Inner() {
   // Simple "ready → active" gate so the reference image renders
   // before the camera engages — mirrors the side-picker pattern on
   // other rehab pages.
@@ -104,6 +98,22 @@ function Inner() {
   const [visited, setVisited] = useState<{ left: boolean; right: boolean }>({ left: false, right: false });
 
   const { patient, isDoctorFlow } = usePatientContext();
+  // Prescribed-session position, or an inert object on a normal
+  // standalone visit. Never gates the exercise itself — the page's
+  // own side / duration picker still runs exactly as it always has.
+  const seq = useRehabSequence();
+
+  // Inside a prescribed session nothing should need tapping: the
+  // exercise opens itself and the longer get-ready countdown covers
+  // getting into position. Applied ONCE — exiting brings the gate
+  // back rather than restarting under the patient.
+  const [autoStarted, setAutoStarted] = useState(false);
+  useEffect(() => {
+    if (seq.inSequence && !autoStarted) {
+      setAutoStarted(true);
+      setPhase("active");
+    }
+  }, [seq.inSequence, autoStarted]);
 
   const sessionStartRef = useRef<number>(performance.now());
   const bestPoseRef = useRef<BestPoseSnapshot | null>(null);
@@ -133,7 +143,7 @@ function Inner() {
     setVisited({ left: false, right: false });
     setElapsedSec(0);
     sessionStartRef.current = performance.now();
-  });
+  }, seq.countdownSec);
 
   useEffect(() => {
     if (sessionPhase !== "live") return;
@@ -270,7 +280,13 @@ function Inner() {
             </Link>
           </div>
 
-          {phase === "ready" ? <ReadyGate onStart={() => setPhase("active")} /> : null}
+          <SequenceStrip seq={seq} />
+
+          {/* Skipped on the way in during a prescribed session;
+              shown again if the patient exits. */}
+          {phase === "ready" && (autoStarted || !seq.inSequence) ? (
+            <ReadyGate onStart={() => setPhase("active")} />
+          ) : null}
 
           {phase !== "ready" && (
             <LiveModeLayout
@@ -367,11 +383,20 @@ function Inner() {
                     </>
                   )}
                   <div className="no-pdf">
-                    <AutoFlowFooter
-                      complete={sessionPhase === "complete"}
-                      buildPayload={buildRehabPayload}
-                      completeHint={`${TARGET_REPS} reps done — saving to record automatically.`}
-                    />
+                    {/* A prescribed session stashes this result and moves on;
+                        the combined report saves at the end. A standalone
+                        visit keeps today's per-exercise auto-save. */}
+                    {seq.inSequence ? (
+                      sessionPhase === "complete" && (
+                        <SequenceNext seq={seq} buildPayload={buildRehabPayload} />
+                      )
+                    ) : (
+                      <AutoFlowFooter
+                        complete={sessionPhase === "complete"}
+                        buildPayload={buildRehabPayload}
+                        completeHint={`${TARGET_REPS} reps done — saving to record automatically.`}
+                      />
+                    )}
                   </div>
                 </>
               )}

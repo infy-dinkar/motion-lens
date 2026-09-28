@@ -44,6 +44,11 @@ import {
   AutoFlowCountdownOverlay,
   AutoFlowFooter,
 } from "@/components/rehab/mechanics/AutoFlowChrome";
+import {
+  SequenceNext,
+  SequenceStrip,
+} from "@/components/rehab/SequenceChrome";
+import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import {
@@ -112,7 +117,7 @@ export default function MarchingExercisePage() {
   );
 }
 
-function Inner() {
+export function Inner() {
   const [durationMin, setDurationMin] = useState<number | null>(null);
   const [pelvisDrifted, setPelvisDrifted] = useState<boolean>(false);
   const [musicOn, setMusicOn] = useState<boolean>(true);
@@ -155,6 +160,10 @@ function Inner() {
   const liftCountRef = useRef<number>(0);
 
   const { patient, isDoctorFlow } = usePatientContext();
+  // Prescribed-session position, or an inert object on a normal
+  // standalone visit. Never gates the exercise itself — the side
+  // picker below still runs exactly as it always has.
+  const seq = useRehabSequence();
 
   // Auto-flow: duration pick → 3-2-1 countdown → live → (timer) →
   // complete → auto-save. Music stays silent through the countdown;
@@ -189,7 +198,7 @@ function Inner() {
       audioRef.current.currentTime = 0;
       void audioRef.current.play().catch(() => {});
     }
-  });
+  }, seq.countdownSec);
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
@@ -459,6 +468,8 @@ function Inner() {
             </Link>
           </div>
 
+          <SequenceStrip seq={seq} />
+
           {durationMin === null ? (
             <DurationPicker onPick={handleDurationPick} />
           ) : null}
@@ -588,10 +599,19 @@ function Inner() {
                   )}
 
                   <div className="no-pdf">
-                    <AutoFlowFooter
-                      complete={sessionPhase === "complete"}
-                      buildPayload={buildRehabPayload}
-                    />
+                    {/* A prescribed session stashes this result and moves on;
+                        the combined report saves at the end. A standalone
+                        visit keeps today's per-exercise auto-save. */}
+                    {seq.inSequence ? (
+                      sessionPhase === "complete" && (
+                        <SequenceNext seq={seq} buildPayload={buildRehabPayload} />
+                      )
+                    ) : (
+                      <AutoFlowFooter
+                        complete={sessionPhase === "complete"}
+                        buildPayload={buildRehabPayload}
+                      />
+                    )}
                   </div>
                 </>
               )}

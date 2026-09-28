@@ -16,17 +16,26 @@ import {
   groupExercisesByJoint,
   type RehabExerciseEntry,
 } from "@/lib/rehab/exerciseCatalog";
+import {
+  DEFAULT_SIDES,
+  type PrescribedSides,
+  type RehabSide,
+} from "@/lib/rehab/prescriptions";
 
 interface PrescriptionEditorProps {
   patientName: string | null;
   /** Currently prescribed slugs from useRecommendations().slugs. */
   currentSlugs: Set<string>;
+  /** Currently prescribed side per slug, from useRecommendations().sides.
+   *  A one-sided exercise missing from this map means "ask at the
+   *  start", which is how every exercise behaved before sides existed. */
+  currentSides: PrescribedSides;
   /** "auto" or "doctor" — controls the reset button visibility. */
   source: "auto" | "doctor";
   /** Recommender reasons keyed by slug (bySlug) for the "why" hint. */
   reasonsBySlug: Map<string, { reasons: { reason: string }[]; note?: string }>;
   saving: boolean;
-  onSave: (slugs: string[]) => Promise<void>;
+  onSave: (slugs: string[], sides: PrescribedSides) => Promise<void>;
   onReset: () => Promise<void>;
   onClose: () => void;
 }
@@ -36,7 +45,7 @@ interface PrescriptionEditorProps {
 type ExerciseCard = Pick<
   RehabExerciseEntry,
   "slug" | "code" | "title" | "joint"
->;
+> & { needsSide?: boolean };
 
 interface JointGroupLite {
   joint: string;
@@ -44,9 +53,58 @@ interface JointGroupLite {
   items: ExerciseCard[];
 }
 
+/**
+ * Left / Right for one prescribed exercise.
+ *
+ * Buttons rather than a select, because the doctor is choosing between
+ * exactly two things and a select would cost a click to see them. It
+ * lives inside the row's <label>, so every click has to stopPropagation
+ * or it would toggle the exercise off.
+ */
+function SidePick({
+  slug,
+  value,
+  onPick,
+}: {
+  slug: string;
+  value: RehabSide[];
+  onPick: (slug: string, side: RehabSide) => void;
+}) {
+  const both = value.length === 2;
+  return (
+    <div className="mt-2 flex items-center gap-1.5">
+      {(["left", "right"] as const).map((side) => {
+        const on = value.includes(side);
+        return (
+          <button
+            key={side}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onPick(slug, side);
+            }}
+            className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold capitalize transition ${
+              on
+                ? "border-accent bg-accent/15 text-accent"
+                : "border-border bg-background text-muted hover:border-accent/50"
+            }`}
+          >
+            {side}
+          </button>
+        );
+      })}
+      <span className="text-[11px] text-subtle">
+        {both ? "· runs twice, one per side" : "· one side only"}
+      </span>
+    </div>
+  );
+}
+
 export function PrescriptionEditor({
   patientName,
   currentSlugs,
+  currentSides,
   source,
   reasonsBySlug,
   saving,
@@ -56,6 +114,7 @@ export function PrescriptionEditor({
 }: PrescriptionEditorProps) {
   // Local draft — user toggles first, saves on commit.
   const [draft, setDraft] = useState<Set<string>>(new Set(currentSlugs));
+  const [sides, setSides] = useState<PrescribedSides>({ ...currentSides });
   const [error, setError] = useState<string | null>(null);
 
   // If the parent's slugs change while the modal is open (rare — e.g.
@@ -65,24 +124,59 @@ export function PrescriptionEditor({
     setDraft(new Set(currentSlugs));
   }, [currentSlugs]);
 
+  useEffect(() => {
+    setSides({ ...currentSides });
+  }, [currentSides]);
+
   const groups: JointGroupLite[] = useMemo(
     () => groupExercisesByJoint() as JointGroupLite[],
     [],
   );
 
-  const toggle = (slug: string) => {
+  const toggle = (slug: string, needsSide?: boolean) => {
     setDraft((prev) => {
       const next = new Set(prev);
       if (next.has(slug)) next.delete(slug);
       else next.add(slug);
       return next;
     });
+    // Ticking a one-sided exercise starts it on BOTH sides. Unticking
+    // leaves whatever was chosen alone — reticking should not silently
+    // discard the doctor's earlier narrowing, and savePrescription
+    // drops sides for exercises that are not in the final list.
+    if (needsSide) {
+      setSides((prev) =>
+        prev[slug] ? prev : { ...prev, [slug]: [...DEFAULT_SIDES] },
+      );
+    }
+  };
+
+  /**
+   * Turn one side on or off.
+   *
+   * The last selected side cannot be turned off: an exercise with no
+   * side has nothing for the session to run, and silently falling back
+   * to "ask at the start" would be a worse surprise than the click
+   * simply not taking.
+   */
+  const pickSide = (slug: string, side: RehabSide) => {
+    setSides((prev) => {
+      const current = prev[slug] ?? [...DEFAULT_SIDES];
+      const on = current.includes(side);
+      if (on && current.length === 1) return prev;
+      const nextSides = on
+        ? current.filter((v) => v !== side)
+        : [...current, side];
+      // Keep left before right so the session order is predictable.
+      nextSides.sort((a, b) => (a === "left" ? -1 : 1));
+      return { ...prev, [slug]: nextSides };
+    });
   };
 
   const handleSave = async () => {
     setError(null);
     try {
-      await onSave(Array.from(draft));
+      await onSave(Array.from(draft), sides);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
@@ -100,9 +194,17 @@ export function PrescriptionEditor({
   };
 
   const draftCount = draft.size;
-  const noChanges =
-    draft.size === currentSlugs.size &&
-    Array.from(draft).every((s) => currentSlugs.has(s));
+  // Changing only a side, with the same exercises ticked, still has to
+  // enable Save — so the comparison covers both halves of the draft.
+  const sameSlugs =
+    draft.size === currentSlugs.size
+    && Array.from(draft).every((s) => currentSlugs.has(s));
+  const sameSides = Array.from(draft).every((s) => {
+    const a = sides[s] ?? [];
+    const b = currentSides[s] ?? [];
+    return a.length === b.length && a.every((v, i) => v === b[i]);
+  });
+  const noChanges = sameSlugs && sameSides;
 
   return (
     <div
@@ -121,8 +223,10 @@ export function PrescriptionEditor({
               {patientName?.trim() || "This patient"}
             </h2>
             <p className="mt-0.5 text-xs text-muted">
-              Toggle exercises the patient should focus on. Reset to let
-              the auto recommender take over again.
+              Toggle exercises the patient should focus on. One-sided
+              exercises start on both sides — turn one off to train
+              just the other. Reset to let the auto recommender take
+              over again.
             </p>
           </div>
           <button
@@ -161,7 +265,7 @@ export function PrescriptionEditor({
                             type="checkbox"
                             className="mt-0.5 h-4 w-4 accent-orange-500"
                             checked={checked}
-                            onChange={() => toggle(m.slug)}
+                            onChange={() => toggle(m.slug, m.needsSide)}
                           />
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-foreground">
@@ -172,6 +276,13 @@ export function PrescriptionEditor({
                               <p className="mt-0.5 line-clamp-2 text-xs text-muted">
                                 {reason}
                               </p>
+                            )}
+                            {checked && m.needsSide && (
+                              <SidePick
+                                slug={m.slug}
+                                value={sides[m.slug] ?? DEFAULT_SIDES}
+                                onPick={pickSide}
+                              />
                             )}
                           </div>
                         </label>

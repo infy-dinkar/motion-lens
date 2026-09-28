@@ -1,27 +1,24 @@
 "use client";
 // S1 — Shoulder Raise to Target.
 //
-// Mechanic: Target-Reach (lib/rehab/mechanics.ts targetReachStep +
-// spawnReachTarget). Cursor is normalised [0..1] × [0..1] in CSS
-// coordinates (y=0 top, y=1 bottom).
+// Mechanic: Rep-Count Gate, via RepCountShell (which is what drives
+// lib/rehab/mechanics.ts repCountStep — this file imports neither the
+// engine nor any cursor code). One rep closes when shoulder elevation
+// passes topThreshold 80° (at or above horizontal) and returns below
+// depthThreshold 20° (arm back at the side) with at least
+// minAmplitude 45° of excursion. TARGET_REPS auto-completes.
 //
-// Mapping — the shared clinical metric IS the game control:
-//   cursor.y ← shoulder elevation ANGLE
-//             higher angle (arm up) ⇒ lower y (cursor near top)
-//             via cursor.y = 1 − clamp(angle / MAX_RAISE, 0, 1)
-//   cursor.x ← test-side wrist x, normalised against video width
-//             and MIRRORED to match the selfie-mirror skeleton view
-//             so the on-screen cursor moves the same direction as
-//             the patient's arm in the camera feed.
+// Movement: ABDUCTION — frontal view, arm raises to the side.
 //
-// v1 movement: ABDUCTION (frontal view, arm raises to the side).
-// Targets spawn randomly within [0.15, 0.85] (the shell's default
-// behaviour) — hitting the highest targets requires patient to
-// raise the arm to ~MAX_RAISE_ANGLE.
+// It was Target-Reach, with this same angle driving a cursor at
+// spawning targets. Commit 7ebb81b replaced that across five
+// exercises: under pose latency the cursor lagged the arm badly
+// enough to be frustrating, and the game never auto-saved. The
+// measured signal is unchanged, so sessions from before and after
+// remain comparable.
 //
 // Reuses (no modifications):
-//   • RehabCameraShell, TargetReachShell, targetReachStep,
-//     spawnReachTarget — rehab mechanic library
+//   • RehabCameraShell, RepCountShell — rehab mechanic library
 //   • computeShoulderAngle — lib/biomech/shoulder-live.ts (zero
 //     modification — imported as-is)
 //   • usePoseDetectionLive, useCamera (via RehabCameraShell)
@@ -43,6 +40,11 @@ import {
   AutoFlowCountdownOverlay,
   AutoFlowFooter,
 } from "@/components/rehab/mechanics/AutoFlowChrome";
+import {
+  SequenceNext,
+  SequenceStrip,
+} from "@/components/rehab/SequenceChrome";
+import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { computeShoulderAngle } from "@/lib/biomech/shoulder-live";
@@ -92,13 +94,29 @@ export default function ShoulderRaisePage() {
   );
 }
 
-function Inner() {
+export function Inner() {
   const [side, setSide] = useState<Side | null>(null);
   const [liveAngle, setLiveAngle] = useState<number>(0);
   const [reps, setReps] = useState(0);
   const [elapsedSec, setElapsedSec] = useState(0);
 
   const { patient, isDoctorFlow } = usePatientContext();
+  // Prescribed-session position, or an inert object on a normal
+  // standalone visit. Never gates the exercise itself — the page's
+  // own side / duration picker still runs exactly as it always has.
+  const seq = useRehabSequence();
+
+  // A prescribed session supplies the side, so the picker is skipped
+  // and the exercise opens straight into its countdown. Applied ONCE:
+  // if the patient exits, the picker comes back rather than the
+  // exercise restarting under them.
+  const [autoStarted, setAutoStarted] = useState(false);
+  useEffect(() => {
+    if (seq.side && !autoStarted) {
+      setAutoStarted(true);
+      setSide(seq.side);
+    }
+  }, [seq.side, autoStarted]);
 
   const sessionStartRef = useRef<number>(performance.now());
   const repStateRef = useRef<RepCountState | null>(null);
@@ -124,7 +142,7 @@ function Inner() {
     setReps(0);
     setElapsedSec(0);
     sessionStartRef.current = performance.now();
-  });
+  }, seq.countdownSec);
 
   const handleSnapshot = useCallback(
     (state: RepCountState, _score: MechanicScore) => {
@@ -244,7 +262,13 @@ function Inner() {
             </Link>
           </div>
 
-          {!side ? <SidePicker onPick={setSide} /> : null}
+          <SequenceStrip seq={seq} />
+
+          {/* Skipped on the way in when the prescription named a
+              side; shown again if the patient exits. */}
+          {!side && (autoStarted || !seq.side) ? (
+            <SidePicker onPick={setSide} />
+          ) : null}
 
           {side && (
             <LiveModeLayout
@@ -318,11 +342,20 @@ function Inner() {
                     </>
                   )}
                   <div className="no-pdf">
-                    <AutoFlowFooter
-                      complete={sessionPhase === "complete"}
-                      buildPayload={buildRehabPayload}
-                      completeHint={`${TARGET_REPS} reps done — saving to record automatically.`}
-                    />
+                    {/* A prescribed session stashes this result and moves on;
+                        the combined report saves at the end. A standalone
+                        visit keeps today's per-exercise auto-save. */}
+                    {seq.inSequence ? (
+                      sessionPhase === "complete" && (
+                        <SequenceNext seq={seq} buildPayload={buildRehabPayload} />
+                      )
+                    ) : (
+                      <AutoFlowFooter
+                        complete={sessionPhase === "complete"}
+                        buildPayload={buildRehabPayload}
+                        completeHint={`${TARGET_REPS} reps done — saving to record automatically.`}
+                      />
+                    )}
                   </div>
                 </>
               )}

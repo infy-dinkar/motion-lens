@@ -178,14 +178,6 @@ export const WALL_CLOCK_LADDER = [
   { level: 4, hitRadiusMultiplier: 1.05, pointsPerHit: 12, pointsPerMiss: -3 },
 ];
 
-export const PENDULUM_LADDER = [
-  { level: 0, accuracyTolerance: 0.10, smoothnessTolerance: 0.0015, pointsPerSample: 1 },
-  { level: 1, accuracyTolerance: 0.08, smoothnessTolerance: 0.0013, pointsPerSample: 1 },
-  { level: 2, accuracyTolerance: 0.07, smoothnessTolerance: 0.0011, pointsPerSample: 1 },
-  { level: 3, accuracyTolerance: 0.06, smoothnessTolerance: 0.001,  pointsPerSample: 1 }, // = default
-  { level: 4, accuracyTolerance: 0.04, smoothnessTolerance: 0.0008, pointsPerSample: 1 },
-];
-
 export const WALL_SLIDE_LADDER = [
   { level: 0, min: 120, max: 150, targetHoldMs: 8000,  hysteresis: 4 },
   { level: 1, min: 130, max: 155, targetHoldMs: 12000, hysteresis: 4 },
@@ -232,7 +224,6 @@ export const LADDERS_BY_SLUG = {
   "cat-cow":            CAT_COW_LADDER,
   "shoulder-raise":     SHOULDER_RAISE_LADDER,
   "wall-clock":         WALL_CLOCK_LADDER,
-  "pendulum":           PENDULUM_LADDER,
   "wall-slide":         WALL_SLIDE_LADDER,
   "external-rotation":  EXTERNAL_ROTATION_LADDER,
   "scapular-set":       SCAPULAR_SET_LADDER,

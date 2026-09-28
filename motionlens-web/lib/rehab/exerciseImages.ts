@@ -17,7 +17,6 @@ export const REHAB_EXERCISE_IMAGES: Record<string, string> = {
   "wall-sit": "/images/rehab/wall-sit.png",
   "pelvic-hold": "/images/rehab/pelvic-hold.png",
   "shoulder-raise": "/images/rehab/shoulder-raise.png",
-  "pendulum": "/images/rehab/pendulum.png",
   "weight-shift": "/images/rehab/weight-shift.png",
   "bridge": "/images/rehab/bridge.png",
   "step-up": "/images/rehab/step-up.png",

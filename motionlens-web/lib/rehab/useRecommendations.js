@@ -19,12 +19,13 @@ import { savePrescription, clearPrescription } from "@/lib/rehab/prescriptions";
  * @typedef {object} UseRecommendationsResult
  * @property {"loading"|"ready"|"empty"|"error"} status
  * @property {Set<string>} slugs
+ * @property {Record<string, ("left"|"right")[]>} sides
  * @property {"auto"|"doctor"} source
  * @property {Recommendation[]} recommended
  * @property {number} assessmentsUsed
  * @property {number} deficitsFound
  * @property {Map<string, Recommendation>} bySlug
- * @property {(slugs: string[]) => Promise<void>} save
+ * @property {(slugs: string[], sides?: Record<string, ("left"|"right")[]>) => Promise<void>} save
  * @property {() => Promise<void>} reset
  * @property {boolean} saving
  */
@@ -37,6 +38,7 @@ export function useRecommendations(patientId) {
   const [state, setState] = useState({
     status: patientId ? "loading" : "empty",
     slugs: new Set(),
+    sides: {},
     source: "auto",
     recommended: [],
     assessmentsUsed: 0,
@@ -53,6 +55,7 @@ export function useRecommendations(patientId) {
       setState({
         status: "empty",
         slugs: new Set(),
+        sides: {},
         source: "auto",
         recommended: [],
         assessmentsUsed: 0,
@@ -71,6 +74,7 @@ export function useRecommendations(patientId) {
         setState({
           status: res.recommended.length === 0 ? "empty" : "ready",
           slugs: res.slugs,
+          sides: res.sides ?? {},
           source: res.source,
           recommended: res.recommended,
           assessmentsUsed: res.assessmentsUsed,
@@ -83,6 +87,7 @@ export function useRecommendations(patientId) {
         setState({
           status: "error",
           slugs: new Set(),
+          sides: {},
           source: "auto",
           recommended: [],
           assessmentsUsed: 0,
@@ -96,11 +101,11 @@ export function useRecommendations(patientId) {
   }, [patientId, refreshTick]);
 
   const save = useCallback(
-    async (slugs) => {
+    async (slugs, sides = {}) => {
       if (!patientId) return;
       setSaving(true);
       try {
-        await savePrescription(patientId, slugs);
+        await savePrescription(patientId, slugs, sides);
       } finally {
         setSaving(false);
         setRefreshTick((t) => t + 1);
