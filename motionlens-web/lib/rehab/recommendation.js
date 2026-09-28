@@ -15,8 +15,8 @@
 
 import { listPatientReports, getReport } from "@/lib/reports";
 import { EXERCISE_INDICATIONS, INDICATED_SLUGS } from "@/lib/rehab/exerciseIndications";
-import { loadPrescription } from "@/lib/rehab/prescriptions";
-import { findExercise } from "@/lib/rehab/exerciseCatalog";
+import { loadPrescription, readSides, DEFAULT_SIDES } from "@/lib/rehab/prescriptions";
+import { findExercise, needsSide } from "@/lib/rehab/exerciseCatalog";
 
 const HISTORY_CAP = 30;
 
@@ -363,9 +363,34 @@ export async function computeRecommendations(patientId) {
 // from your last assessments" with zero refactor.
 
 /**
+ * Give every one-sided exercise in the list a side, defaulting to both.
+ *
+ * A session has no side picker, so a prescribed exercise with no side
+ * would have nothing to run on. Both is the right default: that is how
+ * these are normally trained, and the doctor narrows to one when an
+ * assessment points at a specific side.
+ *
+ * @param {string[]} slugs
+ * @param {Record<string, ("left"|"right")[]>} saved
+ * @returns {Record<string, ("left"|"right")[]>}
+ */
+function withDefaultSides(slugs, saved) {
+  const out = { ...saved };
+  for (const slug of slugs) {
+    if (!needsSide(slug)) continue;
+    if (out[slug] && out[slug].length > 0) continue;
+    out[slug] = [...DEFAULT_SIDES];
+  }
+  return out;
+}
+
+/**
  * @typedef {object} PrescribedSetResult
  * @property {"auto"|"doctor"} source
  * @property {Set<string>} slugs              Prescribed / recommended exercise slugs
+ * @property {Record<string, ("left"|"right")[]>} sides  Prescribed sides
+ *   per slug — a list, because an exercise can be prescribed on both.
+ *   Empty for the auto source.
  * @property {Recommendation[]} recommended   Ranked list with reasons (auto tier)
  * @property {number} assessmentsUsed
  * @property {number} deficitsFound
@@ -422,14 +447,21 @@ export async function getPrescribedSet(patientId) {
     return {
       source: "doctor",
       slugs,
+      // Sides ride in the prescription's notes — see readSides — and
+      // anything the doctor did not narrow defaults to both.
+      sides: withDefaultSides(savedSlugs, readSides(saved.notes)),
       recommended,
       assessmentsUsed: auto.assessmentsUsed,
       deficitsFound: auto.deficitsFound,
     };
   }
 
+  // The auto recommender ranks exercises; it does not examine a
+  // patient and cannot know which shoulder is the bad one. So an
+  // auto-derived list trains both sides until a doctor says otherwise.
   return {
     source: "auto",
+    sides: withDefaultSides(auto.recommended.map((r) => r.slug), {}),
     slugs: new Set(auto.recommended.map((r) => r.slug)),
     recommended: auto.recommended,
     assessmentsUsed: auto.assessmentsUsed,

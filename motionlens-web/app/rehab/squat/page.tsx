@@ -30,6 +30,11 @@ import { RehabCameraShell } from "@/components/rehab/mechanics/RehabCameraShell"
 import { RepCountShell } from "@/components/rehab/mechanics/RepCountShell";
 import { RehabSessionFooter } from "@/components/rehab/RehabSessionFooter";
 import { AutoSaveToast } from "@/components/dashboard/AutoSaveToast";
+import {
+  SequenceNext,
+  SequenceStrip,
+} from "@/components/rehab/SequenceChrome";
+import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { computeKneeAngle } from "@/lib/biomech/knee-live";
 import { DEFAULT_LEVEL_INDEX, SQUAT_LADDER } from "@/lib/rehab/progressionLadders";
@@ -67,7 +72,7 @@ export default function SquatExercisePage() {
 
 type SessionPhase = "countdown" | "live" | "complete";
 
-function Inner() {
+export function Inner() {
   const [side, setSide] = useState<Side | null>(null);
   // Default 180 = standing position, so the engine starts in the
   // "above_top" phase ready for a descent.
@@ -81,6 +86,26 @@ function Inner() {
   const [countdown, setCountdown] = useState<number | null>(null);
 
   const { patient, isDoctorFlow } = usePatientContext();
+  // Prescribed-session position, or an inert object on a normal
+  // standalone visit. The side picker below is untouched.
+  const seq = useRehabSequence();
+  // Read through a ref so changing it cannot restart a running
+  // countdown — the effect below keys on `side` alone, as it always
+  // has.
+  const seqCountdownRef = useRef(seq.countdownSec);
+  seqCountdownRef.current = seq.countdownSec;
+
+  // A prescribed session supplies the side, so the picker is skipped
+  // and the exercise opens straight into its countdown. Applied ONCE:
+  // if the patient exits, the picker comes back rather than the
+  // exercise restarting under them.
+  const [autoStarted, setAutoStarted] = useState(false);
+  useEffect(() => {
+    if (seq.side && !autoStarted) {
+      setAutoStarted(true);
+      setSide(seq.side);
+    }
+  }, [seq.side, autoStarted]);
 
   // Progression: derive the current level from the patient's history
   // when the doctor flow supplied a patientId. Public flow falls back
@@ -224,7 +249,10 @@ function Inner() {
       return;
     }
     setSessionPhase("countdown");
-    setCountdown(3);
+    // Longer inside a prescribed session: the exercise opened by
+    // itself and the patient still has to get set. See
+    // SEQUENCE_COUNTDOWN_SEC.
+    setCountdown(seqCountdownRef.current ?? 3);
     sessionStartRef.current = performance.now();
   }, [side]);
 
@@ -406,11 +434,15 @@ function Inner() {
             </Link>
           </div>
 
-          {!side ? (
+          <SequenceStrip seq={seq} />
+
+          {/* Skipped on the way in when the prescription named a
+              side; shown again if the patient exits. */}
+          {!side && (autoStarted || !seq.side) ? (
             <SidePicker onPick={setSide} />
           ) : null}
 
-          {sessionPhase === "complete" && (
+          {!seq.inSequence && sessionPhase === "complete" && (
             <AutoSaveToast buildPayload={buildRehabPayload} />
           )}
 
@@ -549,7 +581,13 @@ function Inner() {
                   )}
 
                   <div className="no-pdf">
-                    {sessionPhase === "complete" ? (
+                    {/* A prescribed session stashes this result and moves
+                        on; the combined report saves at the end. */}
+                    {seq.inSequence ? (
+                      sessionPhase === "complete" && (
+                        <SequenceNext seq={seq} buildPayload={buildRehabPayload} />
+                      )
+                    ) : sessionPhase === "complete" ? (
                       isDoctorFlow ? (
                         /* Auto-save fires on mount; the toast shows above
                            the whole page. This inline slot only renders a

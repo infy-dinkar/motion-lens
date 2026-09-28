@@ -63,6 +63,10 @@ import { SavedOverheadSquatReport } from "@/components/orthopedic/SavedOverheadS
 import { SavedSquatLateralReport } from "@/components/orthopedic/SavedSquatLateralReport";
 import { SavedRehabReport } from "@/components/dashboard/SavedRehabReport";
 import { GamesBody } from "@/components/games/GamesBody";
+import {
+  RehabBatchBody,
+  isRehabBatch,
+} from "@/components/dashboard/RehabBatchBody";
 import { resolveMovement } from "@/lib/biomech/movements";
 import { getReport, type ReportDTO } from "@/lib/reports";
 import { getPatient, type PatientDTO } from "@/lib/patients";
@@ -471,13 +475,27 @@ function ReportView({ id }: { id: string }) {
           />
         )}
 
+        {/* A prescribed session saves ONE row holding every exercise
+            it played (is_batch + items), the same way Biomechanics
+            Auto Mode does. Both branches end up in the same
+            per-mechanic renderer — see RehabBatchBody. */}
         {report.module === "rehab" && (
-          <SavedRehabReport
-            patientName={patient?.name ?? null}
-            patient={patient}
-            metrics={report.metrics as Record<string, unknown>}
-            observations={report.observations as Record<string, unknown>}
-          />
+          isRehabBatch(report.metrics) ? (
+            <RehabBatchBody
+              metrics={report.metrics as Record<string, unknown>}
+              patient={patient}
+              patientName={patient?.name ?? null}
+              patientId={report.patient_id}
+              dateStr={dateStr}
+            />
+          ) : (
+            <SavedRehabReport
+              patientName={patient?.name ?? null}
+              patient={patient}
+              metrics={report.metrics as Record<string, unknown>}
+              observations={report.observations as Record<string, unknown>}
+            />
+          )
         )}
         {report.module === "games" && <GamesBody report={report} />}
       </div>

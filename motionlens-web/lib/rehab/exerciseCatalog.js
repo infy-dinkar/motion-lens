@@ -31,6 +31,10 @@ import {
  * @property {RehabJoint} joint
  * @property {string} title
  * @property {MechanicId} mechanic
+ * @property {boolean} [needsSide]  True when the exercise is worked one
+ *   side at a time and the page asks which. Drives the Left/Right
+ *   choice in the prescription editor, and whether a prescribed
+ *   session can skip the picker. Absent = bilateral / not sided.
  * @property {string} publicBody
  * @property {string} patientBody
  * @property {import("lucide-react").LucideIcon} icon
@@ -62,6 +66,7 @@ export const REHAB_EXERCISES = [
     joint: "knee",
     title: "Controlled Squat",
     mechanic: "rep_count",
+    needsSide: true,
     publicBody:
       "Quality-gated squat rep counter. Each rep checked against depth (70° knee angle), amplitude (50° excursion), and starting position. Shallow reps flagged transparently. Powered by the Rep-Count mechanic.",
     patientBody:
@@ -76,6 +81,7 @@ export const REHAB_EXERCISES = [
     joint: "knee",
     title: "Mini-Squat",
     mechanic: "rep_count",
+    needsSide: true,
     publicBody:
       "Shallow partial squat — lower intensity than K1. Descend only to ~40° knee flexion, return. Same Rep-Count engine with looser depth gate + smaller amplitude + higher target (12 reps) — suits early-stage / deconditioned patients.",
     patientBody:
@@ -90,6 +96,7 @@ export const REHAB_EXERCISES = [
     joint: "knee",
     title: "Terminal Knee Extension",
     mechanic: "target_reach",
+    needsSide: true,
     publicBody:
       "Active terminal-extension drill — cursor.y is the shared knee extension angle. Top targets target the last 0–27° (post-op terminal band). Target-Reach mechanic.",
     patientBody:
@@ -104,6 +111,7 @@ export const REHAB_EXERCISES = [
     joint: "knee",
     title: "Step-Up Control",
     mechanic: "rep_count",
+    needsSide: true,
     publicBody:
       "Stepping-leg knee control on a low platform. Patient steps up reaching full extension, lowers under control. The same Rep-Count engine K1 uses gates depth and amplitude.",
     patientBody:
@@ -118,6 +126,7 @@ export const REHAB_EXERCISES = [
     joint: "knee",
     title: "Wall Sit",
     mechanic: "hold_in_zone",
+    needsSide: true,
     publicBody:
       "Isometric wall-sit hold at 80°–100° knee flexion. The in-zone timer accumulates as long as the knee stays inside the band; drift out and it pauses. Hold-in-Zone mechanic. 30 s target.",
     patientBody:
@@ -132,6 +141,7 @@ export const REHAB_EXERCISES = [
     joint: "knee",
     title: "Single-Leg Squat",
     mechanic: "rep_count",
+    needsSide: true,
     publicBody:
       "Unipedal squat — patient stands on the working leg, performs a controlled descent, returns to standing. Reduced amplitude vs the bilateral squat, fewer reps, higher points per rep. Rep-Count mechanic.",
     patientBody:
@@ -148,6 +158,7 @@ export const REHAB_EXERCISES = [
     joint: "hip",
     title: "Pelvic-Level Hold",
     mechanic: "hold_in_zone",
+    needsSide: true,
     publicBody:
       "Trendelenburg retraining — single-leg stance holding the pelvis level (±5° band). Hip drop pauses the timer. 25 s cumulative target. Hold-in-Zone mechanic.",
     patientBody:
@@ -162,6 +173,7 @@ export const REHAB_EXERCISES = [
     joint: "hip",
     title: "Hip Abduction",
     mechanic: "target_reach",
+    needsSide: true,
     publicBody:
       "Standing hip abduction to target — patient lifts the working leg to the side. Cursor.y = the shared hip abduction angle: more lift ⇒ higher targets. Target-Reach mechanic.",
     patientBody:
@@ -190,6 +202,7 @@ export const REHAB_EXERCISES = [
     joint: "hip",
     title: "Bridge",
     mechanic: "rep_count",
+    needsSide: true,
     publicBody:
       "Supine glute bridge — lift hips toward a straight shoulder-hip-knee line, hold briefly, lower under control. Each cycle = one rep. Rep-Count mechanic.",
     patientBody:
@@ -218,6 +231,7 @@ export const REHAB_EXERCISES = [
     joint: "hip",
     title: "Lateral Step",
     mechanic: "rep_count",
+    needsSide: true,
     publicBody:
       "Side-stepping drill in a maintained quarter-squat stance — patient steps sideways with the working leg, lands in a controlled load, returns to start. Rep-Count mechanic; tight amplitude gate matches the shallower ROM.",
     patientBody:
@@ -234,6 +248,7 @@ export const REHAB_EXERCISES = [
     joint: "back",
     title: "Posture Hold",
     mechanic: "hold_in_zone",
+    needsSide: true,
     publicBody:
       "Forward-head reset — patient sits or stands lateral to the camera, holds ear stacked above the shoulder. Drift more than 12° forward pauses the timer. 20 s cumulative target. Hold-in-Zone mechanic.",
     patientBody:
@@ -276,6 +291,7 @@ export const REHAB_EXERCISES = [
     joint: "back",
     title: "Bird-Dog",
     mechanic: "match_pose",
+    needsSide: true,
     publicBody:
       "Core-stability + posterior-chain coordination drill — quadruped position, extend ONE arm forward + the OPPOSITE leg backward, hold a horizontal arm-trunk-leg line. Three joint angles tracked; aggregate ≥ 70 % for ≥ 4 s. Match-Pose mechanic.",
     patientBody:
@@ -290,6 +306,7 @@ export const REHAB_EXERCISES = [
     joint: "back",
     title: "Hip Hinge",
     mechanic: "rep_count",
+    needsSide: true,
     publicBody:
       "Posterior-chain pattern training — patient hinges forward at the hips with a FLAT back, returns to upright. Each cycle = one rep. Rep-Count mechanic.",
     patientBody:
@@ -320,6 +337,7 @@ export const REHAB_EXERCISES = [
     joint: "shoulder",
     title: "Shoulder Raise",
     mechanic: "target_reach",
+    needsSide: true,
     publicBody:
       "Active shoulder abduction to target. Cursor.y is the shared shoulder-elevation angle — patient raises arm to hit higher targets. Target-Reach mechanic.",
     patientBody:
@@ -334,6 +352,7 @@ export const REHAB_EXERCISES = [
     joint: "shoulder",
     title: "Wall-Clock Reach",
     mechanic: "target_reach",
+    needsSide: true,
     publicBody:
       "Kinesphere-style wall-reach drill — targets spawn at 12 clock positions and the wrist-relative-to-shoulder vector drives the cursor. Target-Reach mechanic.",
     patientBody:
@@ -348,6 +367,7 @@ export const REHAB_EXERCISES = [
     joint: "shoulder",
     title: "Wall Slide",
     mechanic: "hold_in_zone",
+    needsSide: true,
     publicBody:
       "Overhead-reach hold — back-to-wall, slide working arm up to the 140°–160° shoulder flexion band. 20 s cumulative target. Hold-in-Zone mechanic.",
     patientBody:
@@ -362,6 +382,7 @@ export const REHAB_EXERCISES = [
     joint: "shoulder",
     title: "External Rotation (trend)",
     mechanic: "rep_count",
+    needsSide: true,
     publicBody:
       "Elbow-at-side external rotation rep counter using a forearm-position proxy. Trend-only reading — coarser than a true clinical ER goniometer but useful for tracking session-to-session improvement.",
     patientBody:
@@ -423,6 +444,19 @@ export function findExercise(slug) {
 }
 
 /** Slug → joint lookup (used by RehabProgressDashboard for grouping). */
+/**
+ * Does this exercise ask which side to work?
+ *
+ * Unknown slugs answer false: a retired exercise cannot be run, so it
+ * cannot need a side either.
+ *
+ * @param {string} slug
+ * @returns {boolean}
+ */
+export function needsSide(slug) {
+  return findExercise(slug)?.needsSide === true;
+}
+
 export function jointOfSlug(slug) {
   const ex = findExercise(slug);
   return ex ? ex.joint : null;

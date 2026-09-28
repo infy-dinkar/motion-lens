@@ -21,6 +21,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export type RehabAutoFlowPhase = "countdown" | "live" | "complete";
 
+/** Default when the patient started the exercise themselves and is
+ *  already in front of the camera. */
 const COUNTDOWN_START_SEC = 3;
 
 export function useRehabAutoFlow(
@@ -30,6 +32,14 @@ export function useRehabAutoFlow(
    *  refs) here so pre-session framing noise never leaks into the
    *  saved payload. */
   onLive?: () => void,
+  /**
+   * Seconds to count down before going live. Omit for the 3 s the
+   * squat prototype shipped with; a prescribed session passes a
+   * longer one because the exercise opened by itself and the patient
+   * still has to get into position. Space / Escape skips it either
+   * way.
+   */
+  countdownSec?: number,
 ): {
   phase: RehabAutoFlowPhase | null;
   countdown: number | null;
@@ -51,6 +61,13 @@ export function useRehabAutoFlow(
   }, []);
 
   // Seed / reset the machine when the start gate flips.
+  //
+  // `countdownSec` is deliberately NOT a dependency: changing the
+  // length mid-countdown would restart it, and the only caller that
+  // varies it does so from the URL, which cannot change without a
+  // remount anyway.
+  const secRef = useRef(countdownSec);
+  secRef.current = countdownSec;
   useEffect(() => {
     if (!started) {
       setPhase(null);
@@ -58,7 +75,7 @@ export function useRehabAutoFlow(
       return;
     }
     setPhase("countdown");
-    setCountdown(COUNTDOWN_START_SEC);
+    setCountdown(secRef.current ?? COUNTDOWN_START_SEC);
   }, [started]);
 
   // Countdown tick — flips to live at 0.

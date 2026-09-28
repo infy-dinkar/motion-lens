@@ -44,6 +44,11 @@ import {
   AutoFlowCountdownOverlay,
   AutoFlowFooter,
 } from "@/components/rehab/mechanics/AutoFlowChrome";
+import {
+  SequenceNext,
+  SequenceStrip,
+} from "@/components/rehab/SequenceChrome";
+import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { computeSpineFlexionProxyDeg } from "@/lib/rehab/poseMetrics";
@@ -88,7 +93,7 @@ export default function CatCowExercisePage() {
   );
 }
 
-function Inner() {
+export function Inner() {
   const [phase, setPhase] = useState<"ready" | "active">("ready");
   const [liveProxy, setLiveProxy] = useState<number>(0);
   const [reps, setReps] = useState<number>(0);
@@ -99,6 +104,22 @@ function Inner() {
   const [elapsedSec, setElapsedSec] = useState<number>(0);
 
   const { patient, isDoctorFlow } = usePatientContext();
+  // Prescribed-session position, or an inert object on a normal
+  // standalone visit. Never gates the exercise itself — the page's
+  // own side / duration picker still runs exactly as it always has.
+  const seq = useRehabSequence();
+
+  // Inside a prescribed session nothing should need tapping: the
+  // exercise opens itself and the longer get-ready countdown covers
+  // getting into position. Applied ONCE — exiting brings the gate
+  // back rather than restarting under the patient.
+  const [autoStarted, setAutoStarted] = useState(false);
+  useEffect(() => {
+    if (seq.inSequence && !autoStarted) {
+      setAutoStarted(true);
+      setPhase("active");
+    }
+  }, [seq.inSequence, autoStarted]);
 
   const sessionStartRef = useRef<number>(performance.now());
   const bestPoseRef = useRef<BestPoseSnapshot | null>(null);
@@ -131,7 +152,7 @@ function Inner() {
     setVisited({ cat: false, cow: false });
     setElapsedSec(0);
     sessionStartRef.current = performance.now();
-  });
+  }, seq.countdownSec);
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
@@ -303,7 +324,13 @@ function Inner() {
             </Link>
           </div>
 
-          {phase === "ready" ? <ReadyGate onStart={() => setPhase("active")} /> : null}
+          <SequenceStrip seq={seq} />
+
+          {/* Skipped on the way in during a prescribed session;
+              shown again if the patient exits. */}
+          {phase === "ready" && (autoStarted || !seq.inSequence) ? (
+            <ReadyGate onStart={() => setPhase("active")} />
+          ) : null}
 
           {phase !== "ready" && (
             <LiveModeLayout
@@ -434,10 +461,19 @@ function Inner() {
                   )}
 
                   <div className="no-pdf">
-                    <AutoFlowFooter
-                      complete={sessionPhase === "complete"}
-                      buildPayload={buildRehabPayload}
-                    />
+                    {/* A prescribed session stashes this result and moves on;
+                        the combined report saves at the end. A standalone
+                        visit keeps today's per-exercise auto-save. */}
+                    {seq.inSequence ? (
+                      sessionPhase === "complete" && (
+                        <SequenceNext seq={seq} buildPayload={buildRehabPayload} />
+                      )
+                    ) : (
+                      <AutoFlowFooter
+                        complete={sessionPhase === "complete"}
+                        buildPayload={buildRehabPayload}
+                      />
+                    )}
                   </div>
                 </>
               )}

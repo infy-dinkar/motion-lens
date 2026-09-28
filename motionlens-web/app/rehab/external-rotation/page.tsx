@@ -37,7 +37,7 @@
 //   • usePoseDetectionLive, useCamera, usePatientContext
 // NO biomech file touched.
 
-import { Suspense, useCallback, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Nav } from "@/components/layout/Nav";
 import { Footer } from "@/components/layout/Footer";
@@ -52,6 +52,11 @@ import {
   AutoFlowCountdownOverlay,
   AutoFlowFooter,
 } from "@/components/rehab/mechanics/AutoFlowChrome";
+import {
+  SequenceNext,
+  SequenceStrip,
+} from "@/components/rehab/SequenceChrome";
+import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import {
@@ -103,7 +108,7 @@ export default function ExternalRotationExercisePage() {
   );
 }
 
-function Inner() {
+export function Inner() {
   const [side, setSide] = useState<Side | null>(null);
   // Default 90 = forearm-neutral. Engine inits, transitions to
   // above_top immediately on first valid frame in rest position.
@@ -115,6 +120,22 @@ function Inner() {
   const [elbowDrifted, setElbowDrifted] = useState<boolean>(false);
 
   const { patient, isDoctorFlow } = usePatientContext();
+  // Prescribed-session position, or an inert object on a normal
+  // standalone visit. Never gates the exercise itself — the page's
+  // own side / duration picker still runs exactly as it always has.
+  const seq = useRehabSequence();
+
+  // A prescribed session supplies the side, so the picker is skipped
+  // and the exercise opens straight into its countdown. Applied ONCE:
+  // if the patient exits, the picker comes back rather than the
+  // exercise restarting under them.
+  const [autoStarted, setAutoStarted] = useState(false);
+  useEffect(() => {
+    if (seq.side && !autoStarted) {
+      setAutoStarted(true);
+      setSide(seq.side);
+    }
+  }, [seq.side, autoStarted]);
 
   const sessionStartRef = useRef<number>(performance.now());
   const snapshotRef = useRef<{ state: RepCountState; score: Score } | null>(
@@ -138,7 +159,7 @@ function Inner() {
     bestPoseRef.current = null;
     snapshotRef.current = null;
     sessionStartRef.current = performance.now();
-  });
+  }, seq.countdownSec);
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
@@ -283,7 +304,13 @@ function Inner() {
             </Link>
           </div>
 
-          {!side ? <SidePicker onPick={setSide} /> : null}
+          <SequenceStrip seq={seq} />
+
+          {/* Skipped on the way in when the prescription named a
+              side; shown again if the patient exits. */}
+          {!side && (autoStarted || !seq.side) ? (
+            <SidePicker onPick={setSide} />
+          ) : null}
 
           {side && (
             <LiveModeLayout
@@ -330,7 +357,21 @@ function Inner() {
                       <RepCountShell signal={signal} signalLabel={`${side === "left" ? "L" : "R"} ER (°)`} targetReps={TARGET_REPS} config={ER_CONFIG} onSnapshot={handleSnapshot} compact />
                     </div>
                   )}
-                  <div className="no-pdf"><AutoFlowFooter complete={sessionPhase === "complete"} buildPayload={buildRehabPayload} /></div>
+                  <div className="no-pdf">
+                    {/* A prescribed session stashes this result and moves on;
+                        the combined report saves at the end. A standalone
+                        visit keeps today's per-exercise auto-save. */}
+                    {seq.inSequence ? (
+                      sessionPhase === "complete" && (
+                        <SequenceNext seq={seq} buildPayload={buildRehabPayload} />
+                      )
+                    ) : (
+                      <AutoFlowFooter
+                        complete={sessionPhase === "complete"}
+                        buildPayload={buildRehabPayload}
+                      />
+                    )}
+                  </div>
                 </>
               )}
             />

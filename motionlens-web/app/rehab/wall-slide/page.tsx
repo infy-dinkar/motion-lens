@@ -21,7 +21,7 @@
 //
 // NO biomech file modified — computeShoulderAngle imported as-is.
 
-import { Suspense, useCallback, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Nav } from "@/components/layout/Nav";
 import { Footer } from "@/components/layout/Footer";
@@ -36,6 +36,11 @@ import {
   AutoFlowCountdownOverlay,
   AutoFlowFooter,
 } from "@/components/rehab/mechanics/AutoFlowChrome";
+import {
+  SequenceNext,
+  SequenceStrip,
+} from "@/components/rehab/SequenceChrome";
+import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { computeShoulderAngle } from "@/lib/biomech/shoulder-live";
@@ -82,13 +87,29 @@ export default function WallSlideExercisePage() {
   );
 }
 
-function Inner() {
+export function Inner() {
   const [side, setSide] = useState<Side | null>(null);
   // Default 0 = arm at side. Patient starts below the band; the
   // engine accumulates dtMs only once they slide up into 140°-160°.
   const [shoulderAngle, setShoulderAngle] = useState<number>(0);
 
   const { patient, isDoctorFlow } = usePatientContext();
+  // Prescribed-session position, or an inert object on a normal
+  // standalone visit. Never gates the exercise itself — the page's
+  // own side / duration picker still runs exactly as it always has.
+  const seq = useRehabSequence();
+
+  // A prescribed session supplies the side, so the picker is skipped
+  // and the exercise opens straight into its countdown. Applied ONCE:
+  // if the patient exits, the picker comes back rather than the
+  // exercise restarting under them.
+  const [autoStarted, setAutoStarted] = useState(false);
+  useEffect(() => {
+    if (seq.side && !autoStarted) {
+      setAutoStarted(true);
+      setSide(seq.side);
+    }
+  }, [seq.side, autoStarted]);
 
   const sessionStartRef = useRef<number>(performance.now());
   const bestPoseRef = useRef<BestPoseSnapshot | null>(null);
@@ -118,7 +139,7 @@ function Inner() {
     bestPoseRef.current = null;
     bestSignalRef.current = 0;
     sessionStartRef.current = performance.now();
-  });
+  }, seq.countdownSec);
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
@@ -258,7 +279,13 @@ function Inner() {
             </Link>
           </div>
 
-          {!side ? <SidePicker onPick={setSide} /> : null}
+          <SequenceStrip seq={seq} />
+
+          {/* Skipped on the way in when the prescription named a
+              side; shown again if the patient exits. */}
+          {!side && (autoStarted || !seq.side) ? (
+            <SidePicker onPick={setSide} />
+          ) : null}
 
           {side && (
             <LiveModeLayout
@@ -314,11 +341,20 @@ function Inner() {
                     </div>
                   )}
                   <div className="no-pdf">
-                    <AutoFlowFooter
-                      complete={sessionPhase === "complete"}
-                      buildPayload={buildRehabPayload}
-                      completeHint="Hold target reached — saving to record automatically."
-                    />
+                    {/* A prescribed session stashes this result and moves on;
+                        the combined report saves at the end. A standalone
+                        visit keeps today's per-exercise auto-save. */}
+                    {seq.inSequence ? (
+                      sessionPhase === "complete" && (
+                        <SequenceNext seq={seq} buildPayload={buildRehabPayload} />
+                      )
+                    ) : (
+                      <AutoFlowFooter
+                        complete={sessionPhase === "complete"}
+                        buildPayload={buildRehabPayload}
+                        completeHint="Hold target reached — saving to record automatically."
+                      />
+                    )}
                   </div>
                 </>
               )}

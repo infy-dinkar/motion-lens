@@ -34,7 +34,7 @@
 //   • usePoseDetectionLive, useCamera, usePatientContext
 // NO biomech file touched.
 
-import { Suspense, useCallback, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Nav } from "@/components/layout/Nav";
 import { Footer } from "@/components/layout/Footer";
@@ -49,6 +49,11 @@ import {
   AutoFlowCountdownOverlay,
   AutoFlowFooter,
 } from "@/components/rehab/mechanics/AutoFlowChrome";
+import {
+  SequenceNext,
+  SequenceStrip,
+} from "@/components/rehab/SequenceChrome";
+import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import {
@@ -111,7 +116,7 @@ export default function ScapularSetExercisePage() {
   );
 }
 
-function Inner() {
+export function Inner() {
   // Auto-calibration: starts capturing once shoulder landmarks are
   // reliably visible; flips to "playing" after CALIB_FRAMES stable
   // samples.
@@ -132,6 +137,22 @@ function Inner() {
   const lastKpRef = useRef<PoseSnapshot | null>(null);
 
   const { patient, isDoctorFlow } = usePatientContext();
+  // Prescribed-session position, or an inert object on a normal
+  // standalone visit. Never gates the exercise itself — the page's
+  // own side / duration picker still runs exactly as it always has.
+  const seq = useRehabSequence();
+
+  // Inside a prescribed session nothing should need tapping: the
+  // exercise opens itself and the longer get-ready countdown covers
+  // getting into position. Applied ONCE — exiting brings the gate
+  // back rather than restarting under the patient.
+  const [autoStarted, setAutoStarted] = useState(false);
+  useEffect(() => {
+    if (seq.inSequence && !autoStarted) {
+      setAutoStarted(true);
+      setStarted(true);
+    }
+  }, [seq.inSequence, autoStarted]);
   // Setup-landing gate: the exercise is entered from a setup page with a
   // reference image + camera-setup help + Start button (matches every
   // other rehab exercise, e.g. Hip Abduction). The fullscreen live view
@@ -174,7 +195,7 @@ function Inner() {
     bestPoseRef.current = null;
     snapshotRef.current = null;
     sessionStartRef.current = performance.now();
-  });
+  }, seq.countdownSec);
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
@@ -357,10 +378,14 @@ function Inner() {
             </Link>
           </div>
 
+          <SequenceStrip seq={seq} />
+
           {/* Setup landing — reference form + Start gate. The fullscreen
               live view (below) only mounts after Start, so the camera
               never opens until the patient is ready. */}
-          {!started && (
+          {/* Skipped on the way in during a prescribed session;
+              shown again if the patient exits. */}
+          {!started && (autoStarted || !seq.inSequence) && (
             <div className="mt-10 max-w-md">
               {REHAB_EXERCISE_IMAGES["scapular-set"] && (
                 <div className="overflow-hidden rounded-card border border-border bg-white">
@@ -451,10 +476,19 @@ function Inner() {
                   </div>
                 )}
                 <div className="no-pdf">
-                  <AutoFlowFooter
-                    complete={sessionPhase === "complete"}
-                    buildPayload={buildRehabPayload}
-                  />
+                  {/* A prescribed session stashes this result and moves on;
+                      the combined report saves at the end. A standalone
+                      visit keeps today's per-exercise auto-save. */}
+                  {seq.inSequence ? (
+                    sessionPhase === "complete" && (
+                      <SequenceNext seq={seq} buildPayload={buildRehabPayload} />
+                    )
+                  ) : (
+                    <AutoFlowFooter
+                      complete={sessionPhase === "complete"}
+                      buildPayload={buildRehabPayload}
+                    />
+                  )}
                 </div>
               </>
             )}

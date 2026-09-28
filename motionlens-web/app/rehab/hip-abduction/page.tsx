@@ -39,6 +39,11 @@ import {
   AutoFlowCountdownOverlay,
   AutoFlowFooter,
 } from "@/components/rehab/mechanics/AutoFlowChrome";
+import {
+  SequenceNext,
+  SequenceStrip,
+} from "@/components/rehab/SequenceChrome";
+import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { computeHipAbductionDeg } from "@/lib/rehab/poseMetrics";
@@ -80,13 +85,29 @@ export default function HipAbductionExercisePage() {
   );
 }
 
-function Inner() {
+export function Inner() {
   const [side, setSide] = useState<Side | null>(null);
   const [liveAngle, setLiveAngle] = useState<number>(0);
   const [reps, setReps] = useState(0);
   const [elapsedSec, setElapsedSec] = useState(0);
 
   const { patient, isDoctorFlow } = usePatientContext();
+  // Prescribed-session position, or an inert object on a normal
+  // standalone visit. Never gates the exercise itself — the page's
+  // own side / duration picker still runs exactly as it always has.
+  const seq = useRehabSequence();
+
+  // A prescribed session supplies the side, so the picker is skipped
+  // and the exercise opens straight into its countdown. Applied ONCE:
+  // if the patient exits, the picker comes back rather than the
+  // exercise restarting under them.
+  const [autoStarted, setAutoStarted] = useState(false);
+  useEffect(() => {
+    if (seq.side && !autoStarted) {
+      setAutoStarted(true);
+      setSide(seq.side);
+    }
+  }, [seq.side, autoStarted]);
 
   const sessionStartRef = useRef<number>(performance.now());
   const repStateRef = useRef<RepCountState | null>(null);
@@ -113,7 +134,7 @@ function Inner() {
     setReps(0);
     setElapsedSec(0);
     sessionStartRef.current = performance.now();
-  });
+  }, seq.countdownSec);
 
   const handleSnapshot = useCallback(
     (state: RepCountState, _score: MechanicScore) => {
@@ -232,7 +253,13 @@ function Inner() {
             </Link>
           </div>
 
-          {!side ? <SidePicker onPick={setSide} /> : null}
+          <SequenceStrip seq={seq} />
+
+          {/* Skipped on the way in when the prescription named a
+              side; shown again if the patient exits. */}
+          {!side && (autoStarted || !seq.side) ? (
+            <SidePicker onPick={setSide} />
+          ) : null}
 
           {side && (
             <LiveModeLayout
@@ -306,11 +333,20 @@ function Inner() {
                     </>
                   )}
                   <div className="no-pdf">
-                    <AutoFlowFooter
-                      complete={sessionPhase === "complete"}
-                      buildPayload={buildRehabPayload}
-                      completeHint={`${TARGET_REPS} reps done — saving to record automatically.`}
-                    />
+                    {/* A prescribed session stashes this result and moves on;
+                        the combined report saves at the end. A standalone
+                        visit keeps today's per-exercise auto-save. */}
+                    {seq.inSequence ? (
+                      sessionPhase === "complete" && (
+                        <SequenceNext seq={seq} buildPayload={buildRehabPayload} />
+                      )
+                    ) : (
+                      <AutoFlowFooter
+                        complete={sessionPhase === "complete"}
+                        buildPayload={buildRehabPayload}
+                        completeHint={`${TARGET_REPS} reps done — saving to record automatically.`}
+                      />
+                    )}
                   </div>
                 </>
               )}

@@ -31,7 +31,7 @@
 //   • LM_LIVE ankle indices
 //   • usePoseDetectionLive, useCamera, usePatientContext
 
-import { Suspense, useCallback, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Nav } from "@/components/layout/Nav";
 import { Footer } from "@/components/layout/Footer";
@@ -47,6 +47,11 @@ import {
   AutoFlowCountdownOverlay,
   AutoFlowFooter,
 } from "@/components/rehab/mechanics/AutoFlowChrome";
+import {
+  SequenceNext,
+  SequenceStrip,
+} from "@/components/rehab/SequenceChrome";
+import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import {
@@ -132,10 +137,27 @@ export default function WeightShiftPage() {
   );
 }
 
-function Inner() {
+export function Inner() {
   // Auto-calibration: starts capturing as soon as the camera + hip
   // + ankles are reliably visible; flips to "playing" after 10
   // stable samples.
+  // Prescribed-session position, or an inert object on a normal
+  // standalone visit. Never gates the exercise itself — the page's
+  // own side / duration picker still runs exactly as it always has.
+  const seq = useRehabSequence();
+
+  // Inside a prescribed session nothing should need tapping: the
+  // exercise opens itself and the longer get-ready countdown covers
+  // getting into position. Applied ONCE — exiting brings the gate
+  // back rather than restarting under the patient.
+  const [autoStarted, setAutoStarted] = useState(false);
+  useEffect(() => {
+    if (seq.inSequence && !autoStarted) {
+      setAutoStarted(true);
+      setStarted(true);
+    }
+  }, [seq.inSequence, autoStarted]);
+
   const [phase, setPhase] = useState<"calibrating" | "playing">("calibrating");
   const [calibProgress, setCalibProgress] = useState(0);
   const [shift, setShift] = useState(0);
@@ -183,7 +205,7 @@ function Inner() {
     repVisitedRef.current = { left: false, right: false };
     repsCountRef.current = 0;
     setReps(0);
-  });
+  }, seq.countdownSec);
 
   const handleWSShapshot = useCallback((state: WeightShiftState, _score: MechanicScore) => {
     // Harvest mechanic state for the saved payload. Completion is now
@@ -430,10 +452,14 @@ function Inner() {
             </Link>
           </div>
 
+          <SequenceStrip seq={seq} />
+
           {/* Setup landing — reference form + Start gate. The fullscreen
               live view (below) only mounts after Start, so the camera
               never opens until the patient is ready. */}
-          {!started && (
+          {/* Skipped on the way in during a prescribed session;
+              shown again if the patient exits. */}
+          {!started && (autoStarted || !seq.inSequence) && (
             <div className="mt-10 max-w-md">
               {REHAB_EXERCISE_IMAGES["weight-shift"] && (
                 <div className="overflow-hidden rounded-card border border-border bg-white">
@@ -535,11 +561,20 @@ function Inner() {
                   </div>
                 )}
                 <div className="no-pdf">
-                  <AutoFlowFooter
-                    complete={sessionPhase === "complete"}
-                    buildPayload={buildRehabPayload}
-                    completeHint={`${REP_TARGET} reps done — saving to record automatically.`}
-                  />
+                  {/* A prescribed session stashes this result and moves on;
+                      the combined report saves at the end. A standalone
+                      visit keeps today's per-exercise auto-save. */}
+                  {seq.inSequence ? (
+                    sessionPhase === "complete" && (
+                      <SequenceNext seq={seq} buildPayload={buildRehabPayload} />
+                    )
+                  ) : (
+                    <AutoFlowFooter
+                      complete={sessionPhase === "complete"}
+                      buildPayload={buildRehabPayload}
+                      completeHint={`${REP_TARGET} reps done — saving to record automatically.`}
+                    />
+                  )}
                 </div>
               </>
             )}
