@@ -1,27 +1,24 @@
 "use client";
 // S1 — Shoulder Raise to Target.
 //
-// Mechanic: Target-Reach (lib/rehab/mechanics.ts targetReachStep +
-// spawnReachTarget). Cursor is normalised [0..1] × [0..1] in CSS
-// coordinates (y=0 top, y=1 bottom).
+// Mechanic: Rep-Count Gate, via RepCountShell (which is what drives
+// lib/rehab/mechanics.ts repCountStep — this file imports neither the
+// engine nor any cursor code). One rep closes when shoulder elevation
+// passes topThreshold 80° (at or above horizontal) and returns below
+// depthThreshold 20° (arm back at the side) with at least
+// minAmplitude 45° of excursion. TARGET_REPS auto-completes.
 //
-// Mapping — the shared clinical metric IS the game control:
-//   cursor.y ← shoulder elevation ANGLE
-//             higher angle (arm up) ⇒ lower y (cursor near top)
-//             via cursor.y = 1 − clamp(angle / MAX_RAISE, 0, 1)
-//   cursor.x ← test-side wrist x, normalised against video width
-//             and MIRRORED to match the selfie-mirror skeleton view
-//             so the on-screen cursor moves the same direction as
-//             the patient's arm in the camera feed.
+// Movement: ABDUCTION — frontal view, arm raises to the side.
 //
-// v1 movement: ABDUCTION (frontal view, arm raises to the side).
-// Targets spawn randomly within [0.15, 0.85] (the shell's default
-// behaviour) — hitting the highest targets requires patient to
-// raise the arm to ~MAX_RAISE_ANGLE.
+// It was Target-Reach, with this same angle driving a cursor at
+// spawning targets. Commit 7ebb81b replaced that across five
+// exercises: under pose latency the cursor lagged the arm badly
+// enough to be frustrating, and the game never auto-saved. The
+// measured signal is unchanged, so sessions from before and after
+// remain comparable.
 //
 // Reuses (no modifications):
-//   • RehabCameraShell, TargetReachShell, targetReachStep,
-//     spawnReachTarget — rehab mechanic library
+//   • RehabCameraShell, RepCountShell — rehab mechanic library
 //   • computeShoulderAngle — lib/biomech/shoulder-live.ts (zero
 //     modification — imported as-is)
 //   • usePoseDetectionLive, useCamera (via RehabCameraShell)

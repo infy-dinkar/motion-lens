@@ -16,6 +16,7 @@
 import { listPatientReports, getReport } from "@/lib/reports";
 import { EXERCISE_INDICATIONS, INDICATED_SLUGS } from "@/lib/rehab/exerciseIndications";
 import { loadPrescription } from "@/lib/rehab/prescriptions";
+import { findExercise } from "@/lib/rehab/exerciseCatalog";
 
 const HISTORY_CAP = 30;
 
@@ -396,11 +397,18 @@ export async function getPrescribedSet(patientId) {
   if (saved && Array.isArray(saved.slugs)) {
     const autoBySlug = new Map();
     for (const r of auto.recommended) autoBySlug.set(r.slug, r);
-    const slugs = new Set(saved.slugs);
+    // A saved prescription is whatever the doctor picked on the day,
+    // and exercises can be retired afterwards (S3 Pendulum was, once
+    // it turned out to measure the same thing as S2 Wall-Clock). A
+    // retired slug has no card and no page, so it would render in the
+    // strip as a dead entry — drop anything the catalogue no longer
+    // knows rather than showing the doctor a link that goes nowhere.
+    const savedSlugs = saved.slugs.filter((slug) => findExercise(slug));
+    const slugs = new Set(savedSlugs);
     // Build a Recommendation-shaped array for the prescribed set so
     // downstream UI (strip, badges) is source-agnostic.
     const recommended = [];
-    for (const slug of saved.slugs) {
+    for (const slug of savedSlugs) {
       const ind = EXERCISE_INDICATIONS[slug];
       const autoRec = autoBySlug.get(slug);
       recommended.push({

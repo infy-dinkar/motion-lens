@@ -376,43 +376,40 @@ export const EXERCISE_INDICATIONS = {
     deficitRules: [
       {
         module: "biomech", when: "target_shortfall",
-        body_part: "shoulder", movement: ["flexion_extension", "abduction_adduction"],
+        // "rotation" moved here from the retired S3 Pendulum entry.
+        // Added to THIS rule rather than as a second one: Pendulum's
+        // rule also listed flexion_extension, which is already
+        // covered below, and two overlapping rules would score the
+        // same deficit twice.
+        body_part: "shoulder", movement: ["flexion_extension", "abduction_adduction", "rotation"],
         shortfall_deg: 10,
       },
-    ],
-    note: "Multi-plane reach ROM.",
-    sharedMetric: {
-      assessmentModule: "biomech",
-      assessmentBodyPart: "shoulder",
-      assessmentMovements: ["flexion_extension", "abduction_adduction", "flexion", "abduction"],
-      unit: "°",
-      betterDirection: "higher",
-      label: "Shoulder ROM",
-    },
-  },
-  "pendulum": {
-    slug: "pendulum",
-    linkedAssessments: ["biomech"],
-    priority: 1,
-    deficitRules: [
       {
-        module: "biomech", when: "target_shortfall",
-        body_part: "shoulder", movement: ["rotation", "flexion_extension"],
-        shortfall_deg: 15, weight: 1.3,
-      },
-      {
+        // Also from S3 Pendulum. No overlap with the rule above —
+        // this fires on HOW the patient moved, not how far.
+        //
+        // Worth knowing: Pendulum answered these compensations with
+        // passive Codman motion. Wall-Clock is an active reach drill,
+        // so a patient hitting this rule is being pointed at a harder
+        // exercise than the one that used to serve them.
         module: "biomech", when: "compensation",
         body_part: "shoulder", types: ["shoulder_elevation", "trunk_lean"], min_severity: "high",
       },
     ],
-    note: "Codman-style passive-motion for early post-op / adhesive capsulitis.",
+    note: "Multi-plane reach ROM, including rotation.",
     sharedMetric: {
       assessmentModule: "biomech",
       assessmentBodyPart: "shoulder",
-      assessmentMovements: ["rotation", "flexion_extension", "external_rotation", "internal_rotation"],
+      // The rotation movements come from the retired Pendulum entry
+      // so the progress graph can still pair a Wall-Clock session
+      // with a rotation assessment.
+      assessmentMovements: [
+        "flexion_extension", "abduction_adduction", "flexion", "abduction",
+        "rotation", "external_rotation", "internal_rotation",
+      ],
       unit: "°",
       betterDirection: "higher",
-      label: "Shoulder rotation / ROM",
+      label: "Shoulder ROM",
     },
   },
   "wall-slide": {

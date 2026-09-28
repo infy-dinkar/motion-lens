@@ -1,19 +1,18 @@
 "use client";
 // K3 — Terminal Knee Extension to Target.
 //
-// Mechanic: Target-Reach (lib/rehab/mechanics.ts targetReachStep +
-// spawnReachTarget). Cursor is in [0..1] × [0..1] CSS-y-down coords
-// — same space TargetReachShell expects.
+// Mechanic: Rep-Count Gate, via RepCountShell (which is what drives
+// lib/rehab/mechanics.ts repCountStep — this file imports neither the
+// engine nor any cursor code). One rep closes when the knee extends
+// past topThreshold 150° and returns below depthThreshold 115° with
+// at least minAmplitude 25° of excursion. TARGET_REPS auto-completes.
 //
-// Mapping — the shared clinical metric IS the game control:
-//   extensionNorm ← clamp((180 − flexion) / 180, 0, 1)
-//   cursor.y      ← 1 − extensionNorm  (extension grows ⇒ y drops ⇒
-//                                       cursor rises toward top
-//                                       targets — natural for an
-//                                       "extend to reach" exercise)
-//   cursor.x      ← test-side ankle x, normalised + mirrored to
-//                  match the selfie-skeleton overlay (keeps the
-//                  feel of "cursor follows my foot")
+// It was Target-Reach, with this same angle driving a cursor at
+// spawning targets. Commit 7ebb81b replaced that across five
+// exercises: under pose latency the cursor lagged the leg badly
+// enough to be frustrating, and the game never auto-saved. The
+// measured signal is unchanged, so sessions from before and after
+// remain comparable.
 //
 // computeKneeAngle returns FLEXION:
 //   • Full extension (knee straight) → flexion ≈ 0°
@@ -25,8 +24,7 @@
 //
 // Reuses (no modifications):
 //   • computeKneeAngle (lib/biomech/knee-live.ts) — pure helper
-//   • RehabCameraShell, TargetReachShell, targetReachStep,
-//     spawnReachTarget — rehab mechanic library
+//   • RehabCameraShell, RepCountShell — rehab mechanic library
 //   • LM_LIVE ankle indices
 //   • usePoseDetectionLive, useCamera, usePatientContext
 

@@ -1,4 +1,4 @@
-// Shared source of truth for the 24 rehab exercises.
+// Shared source of truth for the 23 rehab exercises.
 //
 // Consumed by:
 //   • app/rehab/page.tsx                              (public catalogue)
@@ -51,7 +51,7 @@ import {
  * @property {RehabExerciseEntry[]} items
  */
 
-/** All 24 rehab exercises. Order matters for the public catalogue's
+/** All 23 rehab exercises. Order matters for the public catalogue's
  *  reading flow — grouping is done at render time in each consumer.
  *  @type {RehabExerciseEntry[]} */
 export const REHAB_EXERCISES = [
@@ -341,20 +341,6 @@ export const REHAB_EXERCISES = [
     icon: Target,
     iconTone: "text-cyan-500",
     tone: "from-cyan-500/15 to-cyan-500/5",
-  },
-  {
-    slug: "pendulum",
-    code: "S3",
-    joint: "shoulder",
-    title: "Pendulum / Circle Trace",
-    mechanic: "trace",
-    publicBody:
-      "Codman-style pendulum / circle trace — the wrist follows a slow circular pacer to encourage passive shoulder motion without loading the joint. Trace mechanic.",
-    patientBody:
-      "Pendulum circle trace. Trace mechanic.",
-    icon: Spline,
-    iconTone: "text-lime-500",
-    tone: "from-lime-500/15 to-lime-500/5",
   },
   {
     slug: "wall-slide",

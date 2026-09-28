@@ -1,26 +1,23 @@
 "use client";
 // H2 — Standing Hip Abduction to Target.
 //
-// Mechanic: Target-Reach (lib/rehab/mechanics.ts targetReachStep +
-// spawnReachTarget). Cursor is in normalised [0..1] × [0..1]
-// CSS-y-down — same space TargetReachShell expects.
+// Mechanic: Rep-Count Gate, via RepCountShell (which is what drives
+// lib/rehab/mechanics.ts repCountStep — this file imports neither
+// the engine nor any cursor code). One rep closes when hip abduction
+// passes topThreshold 28° and returns below depthThreshold 10° with
+// at least minAmplitude 15° of excursion. TARGET_REPS auto-completes.
 //
-// Mapping — the shared clinical metric IS the game control:
-//   abductionNorm ← clamp(angle / MAX_ABDUCTION_DEG, 0, 1)
-//   cursor.y      ← 1 − abductionNorm  (leg lifts ⇒ cursor.y drops
-//                                       ⇒ cursor rises toward the
-//                                       upper-band targets)
-//   cursor.x      ← working-side ankle x, normalised + mirrored
-//                  for selfie-skeleton consistency
+// It was Target-Reach, with this same angle driving a cursor at
+// spawning targets. Commit 7ebb81b replaced that across five
+// exercises: under pose latency the cursor lagged the leg badly
+// enough to be frustrating, and the game never auto-saved.
 //
-// Same direction convention as S1 Shoulder Raise (which drives
-// cursor.y from shoulder elevation). Top targets sit around
-// cursor.y ≈ 0.15 → abductionNorm ≈ 0.85 → angle ≈ 38° — the
-// upper end of typical active hip abduction ROM (~30-45°).
+// The measured signal did not change — only what the patient chases.
+// computeHipAbductionDeg is still the clinical metric, so sessions
+// from before and after the change remain comparable.
 //
 // Reuses (no modifications):
-//   • TargetReachShell, targetReachStep, spawnReachTarget,
-//     RehabCameraShell — rehab mechanic library
+//   • RepCountShell, RehabCameraShell — rehab mechanic library
 //   • computeHipAbductionDeg — NEW pure fn in lib/rehab/poseMetrics
 //     (no equivalent in biomech; hip-live.ts only models sagittal)
 //   • LM_LIVE ankle indices

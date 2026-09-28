@@ -181,7 +181,7 @@ function ProofOfProgressSection({ patientId }: { patientId: string }) {
         Complete an assessment (e.g. Trendelenburg, AKE, biomech ROM,
         gait) and a few rehab sessions of a linked exercise
         (pelvic-hold, knee-extension, shoulder-raise, wall-slide,
-        pendulum, wall-clock, posture-hold, marching) to see the
+        wall-clock, posture-hold, marching) to see the
         improvement graph populate.
       </div>
     );

@@ -1,34 +1,24 @@
 "use client";
 // S2 — Wall-Clock Multidirectional Reach.
 //
-// Mechanic: Target-Reach (lib/rehab/mechanics.ts targetReachStep +
-// spawnReachTarget). Cursor is in [0..1] × [0..1] CSS-y-down —
-// same space TargetReachShell expects.
+// Mechanic: circle count, hand-rolled in this file — no mechanic
+// shell and nothing from lib/rehab/mechanics. The wrist's angle
+// about a slowly-drifting centre is accumulated, and every full
+// 360° is one circle; TARGET_CIRCLES auto-completes the session.
+// Saved as mechanic_id "swing_count".
 //
-// Cursor source — wrist position RELATIVE to the working shoulder.
-// The patient's hand IS the cursor; reaching in any direction
-// moves the cursor in that direction on screen. Mirror handled to
-// match the selfie-skeleton overlay:
+// It was Target-Reach: dots spawned at clock positions and a cursor
+// driven by the wrist-relative-to-shoulder vector had to hit them.
+// Commit 7ebb81b replaced that across five exercises because the
+// cursor lagged the hand badly enough under pose latency to make the
+// game frustrating, and it never auto-completed or saved.
 //
-//   reachX_mirrored = (shoulder.x − wrist.x)   // raw pixels
-//                                              // positive ⇒ patient
-//                                              // reaches their RIGHT
-//   reachY          = (wrist.y − shoulder.y)   // image y-down
-//                                              // positive ⇒ patient
-//                                              // reaches DOWN
-//   scale           = shoulderWidth × 2.5      // ~1 arm-length spans
-//                                              // ~35% of play area
-//   cursor.x        = clamp(0.5 + reachX_mirrored / scale, 0, 1)
-//   cursor.y        = clamp(0.5 + reachY / scale,          0, 1)
-//
-// Targets spawn at random positions in [0.15, 0.85] × [0.15, 0.85]
-// — inherently multidirectional: targets pop in all four quadrants
-// around the centre, so the patient must reach in all directions
-// (the "wall-clock" pattern) to score, not just one axis.
+// The count is direction-agnostic and only needs the wrist, which is
+// what makes it survive that latency: a late sample still lands on
+// the same arc.
 //
 // Reuses (no modifications):
-//   • TargetReachShell, targetReachStep, spawnReachTarget,
-//     RehabCameraShell — rehab mechanic library
+//   • RehabCameraShell — camera + skeleton overlay
 //   • computeShoulderWidth — existing helper in lib/rehab/poseMetrics
 //     (added for H3 weight-shift; reused here as the body-scale ref)
 //   • LM_LIVE wrist + shoulder indices

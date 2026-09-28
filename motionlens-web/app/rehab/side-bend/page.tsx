@@ -1,30 +1,20 @@
 "use client";
 // B3 — Side Bend (Lateral Trunk Flexion).
 //
-// Mechanic: Target-Reach (lib/rehab/mechanics.ts targetReachStep +
-// spawnReachTarget). Cursor in normalised [0..1] × [0..1] CSS-y-down
-// — same space TargetReachShell expects.
+// Mechanic: bilateral rep count, hand-rolled in this file — no
+// mechanic shell and nothing from lib/rehab/mechanics, though the
+// result is saved as mechanic_id "rep_count" alongside the
+// shell-driven exercises. The signed lateral-flexion angle is
+// EMA-smoothed, and touching BOTH sides past REP_REACH 12° counts as
+// one full cycle. TARGET_REPS auto-completes.
 //
-// Bilateral movement — patient bends to either side; cursor moves
-// accordingly via SIGNED math (positive angle = right bend).
+// Bilateral by design: the patient bends to either side, and the
+// helper returns POSITIVE for an anatomical-right bend.
 //
-// Cursor mapping — single signal (lateral flexion) drives both axes
-// so the rectangular play area gets meaningful coverage:
-//
-//   angle = computeLateralTrunkFlexionDeg(kp)   // signed
-//                                               // +25° = full right bend
-//                                               // −25° = full left bend
-//   cursor.x = 0.5 + clamp(angle / (2 × MAX), −0.45, +0.45)
-//                                               // signed lateral shift
-//   cursor.y = 1 − clamp(|angle| / MAX, 0, 0.85)
-//                                               // magnitude → height
-//                                               // neutral ⇒ y = 1.0 (bottom)
-//                                               // max bend ⇒ y ≈ 0.15 (top)
-//
-// Trajectory: at rest cursor sits at (0.5, 1.0) bottom-centre. As
-// the patient bends right, the cursor sweeps up-and-right; bend
-// left, up-and-left. Targets spawning anywhere in [0.15, 0.85] ×
-// [0.15, 0.85] are reachable across the natural ROM arc.
+// It was Target-Reach, with this same signed angle driving a cursor
+// at spawning targets. Commit 7ebb81b replaced that across five
+// exercises: under pose latency the cursor lagged the trunk badly
+// enough to be frustrating, and the game never auto-saved.
 //
 // Mirror correctness: the camera shell renders a selfie-mirror
 // (patient's right appears on screen-right). The helper returns
@@ -33,8 +23,7 @@
 // directional feel without extra negation.
 //
 // Reuses (no modifications):
-//   • TargetReachShell, targetReachStep, spawnReachTarget,
-//     RehabCameraShell
+//   • RehabCameraShell
 //   • computeLateralTrunkFlexionDeg — NEW pure fn in poseMetrics
 //   • usePatientContext
 
