@@ -17,11 +17,13 @@ import { useState } from "react";
 import { AlertTriangle, Check, Circle, SkipForward } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
+// The same ring the Games calibration uses, so a patient who has done
+// both sees one thing: a lime circle that closes as they hold still and
+// counts the seconds left in the middle.
+import { ProgressRing } from "@/components/games/gameUi";
 import { STILL_TOLERANCE } from "@/lib/rehab/calibration/holdTracker";
 import type { SessionState } from "@/lib/rehab/calibration/session";
-
-const RING_R = 54;
-const RING_C = 2 * Math.PI * RING_R;
+import { HOLD_MS } from "@/lib/rehab/calibration/specs";
 
 export function RehabCalibrationOverlay({
   state,
@@ -58,7 +60,8 @@ export function RehabCalibrationOverlay({
   if (!hold) return null;
 
   const blocked = state.status === "blocked";
-  const dash = RING_C * (1 - Math.min(1, Math.max(0, state.progress)));
+  // Lime while the ring is filling; grey when it is paused or waiting.
+  const active = state.status === "holding" || state.status === "drifted";
 
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col justify-between bg-black/25 p-4 text-white">
@@ -70,37 +73,25 @@ export function RehabCalibrationOverlay({
         <p className="mt-1 text-lg font-semibold leading-snug">{hold.instruction}</p>
       </div>
 
-      {/* Centre: the ring and the one message. */}
+      {/* Centre: the ring and the one message — laid out as the Games
+          calibrate screen is. The ring never changes silently: paused,
+          drifted and idle each say what is happening. */}
       <div className="flex flex-col items-center gap-3">
-        <div className="relative h-32 w-32">
-          <svg viewBox="0 0 128 128" className="h-32 w-32 -rotate-90">
-            <circle cx="64" cy="64" r={RING_R} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="8" />
-            <circle
-              cx="64"
-              cy="64"
-              r={RING_R}
-              fill="none"
-              stroke={blocked ? "rgb(251 191 36)" : "rgb(52 211 153)"}
-              strokeWidth="8"
-              strokeLinecap="round"
-              strokeDasharray={RING_C}
-              strokeDashoffset={dash}
-              style={{ transition: "stroke-dashoffset 120ms linear" }}
-            />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="tabular text-2xl font-semibold">
-              {Math.round(state.progress * 100)}%
-            </span>
-          </div>
-        </div>
+        <ProgressRing progress={state.progress} active={active} holdMs={HOLD_MS} />
         <p
-          className={`rounded-full px-4 py-1.5 text-sm font-medium backdrop-blur ${
-            blocked ? "bg-amber-500/25 text-amber-100" : "bg-black/60 text-white"
+          className={`max-w-xl rounded-card px-4 py-1.5 text-center backdrop-blur ${
+            blocked
+              ? "bg-black/60 text-2xl font-semibold text-amber-300"
+              : "bg-black/50 text-lg text-white/80"
           }`}
         >
           {state.message}
         </p>
+        {blocked && state.progress > 0 && (
+          <p className="rounded-full bg-black/50 px-3 py-1 text-sm text-white/60">
+            Timer paused at {Math.round(state.progress * 100)}% — it will carry on from here.
+          </p>
+        )}
       </div>
 
       {debugOn && <DebugReadout state={state} />}
