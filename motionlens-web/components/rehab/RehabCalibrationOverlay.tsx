@@ -13,9 +13,11 @@
 // surface shows the 3-2-1 instead. Nothing here computes anything; it
 // draws a SessionState.
 
+import { useState } from "react";
 import { AlertTriangle, Check, Circle, SkipForward } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
+import { STILL_TOLERANCE } from "@/lib/rehab/calibration/holdTracker";
 import type { SessionState } from "@/lib/rehab/calibration/session";
 
 const RING_R = 54;
@@ -31,6 +33,14 @@ export function RehabCalibrationOverlay({
   countdown?: number | null;
   onStartAnyway: () => void;
 }) {
+  // ?rehabdebug=1 shows the numbers behind every decision. Read once:
+  // the overlay only exists on the client, after the camera is up.
+  const [debugOn] = useState(
+    () =>
+      typeof window !== "undefined"
+      && new URLSearchParams(window.location.search).get("rehabdebug") === "1",
+  );
+
   if (countdown !== null && countdown !== undefined) {
     return (
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
@@ -93,6 +103,8 @@ export function RehabCalibrationOverlay({
         </p>
       </div>
 
+      {debugOn && <DebugReadout state={state} />}
+
       {/* Bottom: checklist, distance note, escape hatch. */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <ul className="flex flex-wrap gap-x-4 gap-y-1 rounded-card bg-black/60 px-4 py-2 text-xs backdrop-blur">
@@ -125,6 +137,28 @@ export function RehabCalibrationOverlay({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Everything the current decision rests on, as raw numbers. */
+function DebugReadout({ state }: { state: SessionState }) {
+  const d = state.debug;
+  const f = (v: number | null | undefined, digits = 2) =>
+    v === null || v === undefined ? "—" : v.toFixed(digits);
+  const delta =
+    state.value !== null && d.rest !== null ? Math.abs(state.value - d.rest) : null;
+  return (
+    <div className="pointer-events-none absolute left-4 top-24 rounded-md bg-black/75 px-3 py-2 font-mono text-[11px] leading-relaxed text-emerald-100 backdrop-blur">
+      <div>hold {state.holdIndex + 1}/{state.total} · {state.status} · {Math.round(state.progress * 100)}%</div>
+      <div>msg: {state.message || "—"}</div>
+      <div>value {f(state.value, 1)} · rest {f(d.rest, 1)} · Δ {f(delta, 1)} (need ≥ {d.minDelta})</div>
+      <div>drift {f(d.drift, 3)} (reset &gt; {STILL_TOLERANCE})</div>
+      <div>view ratio {f(d.viewRatio)} · facing diff {f(d.facingDiff)} · scale {f(d.scale, 3)}</div>
+      <div>
+        {state.checks.map((c) => `${c.id}:${c.ok ? "ok" : "FAIL"}`).join("  ")}
+      </div>
+      <div>elapsed {(state.elapsedMs / 1000).toFixed(1)}s</div>
     </div>
   );
 }

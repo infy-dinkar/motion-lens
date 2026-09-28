@@ -82,6 +82,16 @@ export interface SessionState {
   value: number | null;
   done: boolean;
   results: HoldResult[];
+  /** Everything the current decision rests on. Debug overlay only. */
+  debug: {
+    rest: number | null;
+    /** How far the reading must move from rest for a range hold. */
+    minDelta: number;
+    drift: number;
+    viewRatio: number | null;
+    facingDiff: number | null;
+    scale: number | null;
+  };
 }
 
 /** What lands in metrics.calibration. Additive; the report renderer
@@ -194,6 +204,7 @@ export class CalibrationSession {
       elapsed >= START_ANYWAY_MS,
       elapsed,
       value,
+      ready.debug,
     );
     return this.lastState;
   }
@@ -255,9 +266,18 @@ export class CalibrationSession {
     canStartAnyway: boolean,
     elapsedMs: number,
     value: number | null,
+    debug?: Partial<SessionState["debug"]>,
   ): SessionState {
     const hold = this.spec.holds[this.index] ?? null;
     return {
+      debug: {
+        rest: this.restValue(),
+        minDelta: MIN_RANGE_DELTA[this.spec.unit],
+        drift: this.tracker.lastDrift,
+        viewRatio: debug?.viewRatio ?? null,
+        facingDiff: debug?.facingDiff ?? null,
+        scale: this.lastScale,
+      },
       holdIndex: this.index,
       total: this.spec.holds.length,
       hold,

@@ -88,6 +88,13 @@ export interface Readiness {
   /** The scale reference as a fraction of the frame, for the debug
    *  overlay and the saved summary. */
   scale: number | null;
+  /** The numbers each decision was made on. Debug overlay only. */
+  debug: {
+    viewRatio: number | null;
+    /** Far-side minus working-side mean visibility; null when the
+     *  facing check did not run. */
+    facingDiff: number | null;
+  };
 }
 
 // ── Landmark resolution ───────────────────────────────────────────
@@ -269,6 +276,7 @@ export function assessReadiness(
   let facingOk = true;
   let facingMsg = "";
   let swapped = false;
+  let facingDiff: number | null = null;
   if (spec.view === "side" && spec.sided && side !== null) {
     const o: Side = side === "left" ? "right" : "left";
     const limb = spec.parts.some((p) => p.part === "KNEE" || p.part === "ANKLE") ? "leg" : "side";
@@ -295,6 +303,7 @@ export function assessReadiness(
         theirs += score(kp, indexOf(r.part, far));
         n += 1;
       }
+      if (n > 0) facingDiff = (theirs - mine) / n;
       if (n > 0 && (theirs - mine) / n >= FACING_MARGIN) {
         facingOk = false;
         facingMsg = turn;
@@ -343,6 +352,7 @@ export function assessReadiness(
     warn: firstWarn ? firstWarn.message : null,
     ref,
     scale,
+    debug: { viewRatio, facingDiff },
   };
 }
 

@@ -211,6 +211,11 @@ export function SavedRehabReport({
         <ClinicalMetricCard signal={signal} />
       )}
 
+      {/* Calibration — the two holds recorded before the exercise began:
+          the resting value and the comfortable range. Present only on
+          sessions run since calibration shipped; older reports skip it. */}
+      <CalibrationCard raw={pickObject(metrics, "calibration")} />
+
       {/* Best-rep skeleton — redrawn from saved landmark coords onto
           a stand-alone canvas so it's centered + full-body, not a
           screenshot of whatever framing the live camera happened to
@@ -1158,6 +1163,66 @@ function parseSavedCompensations(
     out.push({ type, label, severity, flagged: true, details });
   }
   return out;
+}
+
+/**
+ * Rest and range from the pre-exercise calibration.
+ *
+ * Nothing here is interpreted — no target, no pass/fail. It is the
+ * patient's own starting position and comfortable maximum on the day,
+ * which becomes a trend across visits. A skipped hold shows as "not
+ * recorded" rather than a number, so a "Start anyway" is visible.
+ */
+function CalibrationCard({ raw }: { raw: Record<string, unknown> | null }) {
+  if (!raw) return null;
+  const unit = pickString(raw, "unit") === "ratio" ? "" : "°";
+  const signal = pickString(raw, "signal");
+  const rest = pickNumber(raw, "rest");
+  const range = pickNumber(raw, "range");
+  const rangeL = pickNumber(raw, "range_left");
+  const rangeR = pickNumber(raw, "range_right");
+  const passed = pickNumber(raw, "holds_passed");
+  const total = pickNumber(raw, "holds_total");
+  const skipped = raw.skipped === true;
+  const fmt = (v: number | null) =>
+    v === null ? "not recorded" : `${Math.round(v * 10) / 10}${unit}`;
+  const label = signal ? humanizeSignal(signal) : "Calibration";
+
+  const rows: Array<[string, string]> = [["Start pose (rest)", fmt(rest)]];
+  if (rangeL !== null || rangeR !== null) {
+    rows.push(["Range — left", fmt(rangeL)]);
+    rows.push(["Range — right", fmt(rangeR)]);
+  } else {
+    rows.push(["Show your range", fmt(range)]);
+  }
+
+  return (
+    <div className="rounded-card border border-border bg-surface p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <p className="text-xs uppercase tracking-[0.14em] text-subtle">Calibration</p>
+          <p className="mt-1 text-sm font-semibold text-foreground">{label}</p>
+        </div>
+        <p className="text-xs text-muted">
+          {passed !== null && total !== null ? `${passed} of ${total} holds` : ""}
+          {skipped ? " · started anyway" : ""}
+        </p>
+      </div>
+      <dl className="mt-4 grid gap-3 sm:grid-cols-3">
+        {rows.map(([k, v]) => (
+          <div key={k} className="rounded-md border border-border bg-background px-3 py-2">
+            <dt className="text-[11px] uppercase tracking-wide text-subtle">{k}</dt>
+            <dd className="mt-0.5 text-lg font-semibold tabular text-foreground">{v}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-3 text-xs text-muted">
+        Recorded before the exercise, from two short holds. Not a target
+        — the patient&apos;s own starting position and comfortable range
+        that day.
+      </p>
+    </div>
+  );
 }
 
 function CompensationsCard({ flags }: { flags: CompensationFlag[] }) {

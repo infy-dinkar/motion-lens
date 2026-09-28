@@ -72,6 +72,9 @@ export class HoldTracker {
   status: HoldStatus = "idle";
   /** The reason, when status is "blocked". */
   blockReason = "";
+  /** Reference-point drift on the last frame, normalised frame units.
+   *  Debug readout: a hold that keeps resetting shows it here. */
+  lastDrift = 0;
 
   constructor(private readonly holdMs: number = HOLD_MS) {}
 
@@ -84,6 +87,7 @@ export class HoldTracker {
     this.holding = false;
     this.status = "idle";
     this.blockReason = "";
+    this.lastDrift = 0;
   }
 
   /**
@@ -133,6 +137,7 @@ export class HoldTracker {
     }
 
     const drift = Math.hypot(ref.nx - this.anchor.nx, ref.ny - this.anchor.ny);
+    this.lastDrift = drift;
     if (drift > STILL_TOLERANCE) {
       // Moved too far — restart the ring from the new position.
       this.anchor = { nx: ref.nx, ny: ref.ny };
