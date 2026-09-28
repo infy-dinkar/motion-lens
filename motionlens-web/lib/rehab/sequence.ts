@@ -40,14 +40,12 @@ export const SEQUENCE_COUNTDOWN_SEC = 10;
 /**
  * Seconds between "Session complete" and the next exercise opening.
  *
- * The real pause is longer than this number: at zero the router moves
- * to the next exercise, which remounts the page and restarts the
- * camera, and the screen holds on the finished exercise while that
- * happens. So the counter is set below the gap actually wanted —
- * matching Biomechanics Auto Mode, which lands in the same place for
- * the same reason.
+ * Short on purpose. The next exercise opens into its own calibration,
+ * which is where the patient gets into position — so this card only
+ * has to be readable, not to leave time. It was 8 s when the gap was
+ * the only positioning time there was.
  */
-export const SEQUENCE_GAP_SEC = 8;
+export const SEQUENCE_GAP_SEC = 3;
 
 /** Query parameter names, in one place so the pages and the done
  *  screen cannot drift apart. */

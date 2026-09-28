@@ -35,6 +35,9 @@ import {
   SequenceStrip,
 } from "@/components/rehab/SequenceChrome";
 import { useRehabSequence } from "@/lib/rehab/useSequence";
+import { useRehabCalibration } from "@/lib/rehab/calibration/useRehabCalibration";
+import { RehabCalibrationOverlay } from "@/components/rehab/RehabCalibrationOverlay";
+import { POST_GATE_COUNTDOWN_SEC } from "@/lib/rehab/calibration/specs";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { computeKneeAngle } from "@/lib/biomech/knee-live";
 import { DEFAULT_LEVEL_INDEX, SQUAT_LADDER } from "@/lib/rehab/progressionLadders";
@@ -70,7 +73,7 @@ export default function SquatExercisePage() {
   );
 }
 
-type SessionPhase = "countdown" | "live" | "complete";
+type SessionPhase = "calibrate" | "countdown" | "live" | "complete";
 
 export function Inner() {
   const [side, setSide] = useState<Side | null>(null);
@@ -94,6 +97,15 @@ export function Inner() {
   // has.
   const seqCountdownRef = useRef(seq.countdownSec);
   seqCountdownRef.current = seq.countdownSec;
+
+  // Two short holds before the countdown: start pose, then show your
+  // range. Records rest and range under metrics.calibration; changes
+  // nothing about how the squat itself is scored.
+  const calibration = useRehabCalibration("squat", side, side !== null);
+  const calibEnabled = calibration.enabled;
+  const calibDone = calibration.done;
+  const calibSummaryRef = useRef(calibration.summary);
+  calibSummaryRef.current = calibration.summary;
 
   // A prescribed session supplies the side, so the picker is skipped
   // and the exercise opens straight into its countdown. Applied ONCE:
@@ -153,6 +165,7 @@ export function Inner() {
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
+      calibration.feed(kp as unknown as LiveKeypoint[], video);
       if (!side) return;
       const sw = video.videoWidth;
       const sh = video.videoHeight;
@@ -248,13 +261,21 @@ export function Inner() {
       setCountdown(null);
       return;
     }
+    // Calibration first. `calibDone` flipping true re-runs this effect
+    // and drops through to the countdown.
+    if (calibEnabled && !calibDone) {
+      setSessionPhase("calibrate");
+      setCountdown(null);
+      return;
+    }
     setSessionPhase("countdown");
-    // Longer inside a prescribed session: the exercise opened by
-    // itself and the patient still has to get set. See
-    // SEQUENCE_COUNTDOWN_SEC.
-    setCountdown(seqCountdownRef.current ?? 3);
+    // After calibration the holds have already given the patient the
+    // positioning time; a short "go" is all that is left.
+    setCountdown(
+      calibEnabled ? POST_GATE_COUNTDOWN_SEC : (seqCountdownRef.current ?? 3),
+    );
     sessionStartRef.current = performance.now();
-  }, [side]);
+  }, [side, calibEnabled, calibDone]);
 
   // Countdown tick — decrements once per second, flips to "live" at 0.
   useEffect(() => {
@@ -363,6 +384,7 @@ export function Inner() {
       movement: "squat",
       side,
       metrics: {
+        calibration: calibSummaryRef.current(),
         exercise_slug: "squat",
         mechanic_id: "rep_count",
         started_at_ms: sessionStartRef.current,
@@ -486,6 +508,12 @@ export function Inner() {
                   {/* Big 3-2-1 countdown overlay before the session
                       goes live. Cancelable via Space/Escape or the
                       sidebar "Skip countdown" button. */}
+                  {sessionPhase === "calibrate" && calibration.state && (
+                    <RehabCalibrationOverlay
+                      state={calibration.state}
+                      onStartAnyway={calibration.startAnyway}
+                    />
+                  )}
                   {sessionPhase === "countdown" && countdown !== null && (
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[1px]">
                       <div className="rounded-full bg-black/70 px-10 py-6 text-center text-white shadow-2xl ring-2 ring-white/20">
