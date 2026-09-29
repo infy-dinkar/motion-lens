@@ -257,9 +257,13 @@ export function Inner() {
           name: "hip_interior",
           unit: "deg",
           value_at_peak: peakBridgeRef.current,
+          // The peak is what is judged, so the band is where a good
+          // peak lands: from the top line up to a fully straight
+          // shoulder–hip–knee (180°). It was depth–top, which put a
+          // perfect 180° bridge "outside the target band".
           target_band: {
-            min: activeConfig.depthThreshold,
-            max: activeConfig.topThreshold,
+            min: activeConfig.topThreshold,
+            max: 180,
           },
         },
         target_reps: TARGET_REPS,

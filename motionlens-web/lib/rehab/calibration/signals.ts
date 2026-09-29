@@ -82,6 +82,11 @@ export function readCalibSignal(
       return sided((sd) => computeKneeAngle("flexion", k, sd));
     case "hip_flexion":
       return sided((sd) => computeHipAngle("flexion", k, sd));
+    case "hip_interior":
+      return sided((sd) => {
+        const f = computeHipAngle("flexion", k, sd);
+        return f === null ? null : 180 - f;
+      });
     case "hip_abduction":
       return sided((sd) => computeHipAbductionDeg(kp, sd));
     case "shoulder_abduction":

@@ -74,6 +74,10 @@ export type ScaleRef = "thigh" | "torso" | "shoulderWidth" | "hipWidth";
 export type CalibSignal =
   | "knee_flexion"
   | "hip_flexion"
+  /** 180 − hip_flexion: the shoulder–hip–knee angle the bridge page
+   *  scores and reports, so its calibration card reads in the same
+   *  numbers as its clinical metric. */
+  | "hip_interior"
   | "hip_abduction"
   | "shoulder_abduction"
   | "shoulder_flexion"
@@ -267,12 +271,12 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     view: "side", posture: "supine", sided: true,
     parts: [W("SHOULDER"), W("HIP"), W("KNEE")],
     scaleRef: "torso",
-    signal: "hip_flexion", signalSide: "working", unit: "deg",
+    signal: "hip_interior", signalSide: "working", unit: "deg",
     holds: [
       rest("Lie on your back, knees bent, feet flat. Relax."),
       range("Lift your hips as high as is comfortable, and hold."),
     ],
-    note: "Page stores hip INTERIOR (180 - flexion); convert when wiring. Camera at floor level.",
+    note: "Records hip INTERIOR (180 - flexion), the page's own metric, so the report's calibration card and clinical metric read in the same numbers. Camera at floor level.",
   },
   "cat-cow": {
     slug: "cat-cow",
