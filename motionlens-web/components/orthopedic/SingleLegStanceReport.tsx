@@ -16,6 +16,7 @@ import {
   CLASSIFICATION_TONE,
   type SessionResult,
   type TrialResult,
+  type HoldSegment,
 } from "@/lib/orthopedic/singleLegStance";
 import { ReportDisclaimer } from "@/components/ui/ReportDisclaimer";
 import { PatientHeader } from "@/components/dashboard/PatientHeader";
@@ -175,6 +176,11 @@ function TrialCard({
           <p className="mt-1 text-2xl font-semibold tabular text-foreground">
             {trial.hold_seconds.toFixed(1)} s
           </p>
+          {trial.hold_segments && (
+            <p className="text-[11px] text-muted">
+              longest hold in the {trial.window_seconds ?? trial.hold_capped_at} s window
+            </p>
+          )}
         </div>
         <span className={`inline-block rounded-full px-2.5 py-1 text-[11px] font-medium ${tone}`}>
           {cls}
@@ -184,7 +190,23 @@ function TrialCard({
       <table className="w-full text-left text-sm">
         <tbody>
           <Row label="Threshold" value={`≥ ${trial.norm_threshold_sec.toFixed(1)} s · ${trial.norm_band_label}`} />
-          <Row label="Max hold (cap)" value={`${trial.hold_capped_at} s`} />
+          {trial.hold_segments ? (
+            <>
+              <Row label="Window" value={`${trial.window_seconds ?? trial.hold_capped_at} s of ${trial.hold_capped_at} s`} />
+              <Row label="Longest hold" value={`${trial.hold_seconds.toFixed(1)} s`} />
+              <Row label="Total time on one leg" value={`${(trial.total_balance_seconds ?? 0).toFixed(1)} s`} />
+              <Row label="Holds" value={`${trial.lift_count ?? trial.hold_segments.length}`} />
+              <Row label="Foot touchdowns" value={`${trial.touchdown_count ?? 0}`} />
+              <Row
+                label="First lift"
+                value={trial.time_to_first_lift_s === null || trial.time_to_first_lift_s === undefined
+                  ? "not detected"
+                  : `${trial.time_to_first_lift_s.toFixed(1)} s after start`}
+              />
+            </>
+          ) : (
+            <Row label="Max hold (cap)" value={`${trial.hold_capped_at} s`} />
+          )}
           <Row label="Sway path length" value={`${trial.sway_path_px.toFixed(0)} px (relative)`} />
           <Row label="95% sway ellipse" value={`${trial.sway_95_ellipse_px2.toFixed(0)} px² (relative)`} />
           <Row label="Mean trunk lean" value={`${Math.abs(trial.mean_trunk_lean_deg).toFixed(1)}°`} />
@@ -192,6 +214,10 @@ function TrialCard({
           <Row label="Termination" value={terminationLabel(trial)} />
         </tbody>
       </table>
+
+      {trial.hold_segments && trial.hold_segments.length > 0 && (
+        <HoldsTable segments={trial.hold_segments} />
+      )}
 
       {!trial.norm_comparable && (
         <p className="rounded-md border border-warning/40 bg-warning/5 px-3 py-2 text-xs text-foreground">
@@ -222,7 +248,56 @@ function TrialCard({
   );
 }
 
+/** Every counted hold in the window, in order. */
+function HoldsTable({ segments }: { segments: HoldSegment[] }) {
+  const longest = segments.reduce((m, g) => Math.max(m, g.duration_s), 0);
+  return (
+    <div>
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-subtle">
+        Holds in the window
+      </p>
+      <table className="w-full text-left text-xs">
+        <thead>
+          <tr className="text-subtle">
+            <th className="py-1 font-medium">#</th>
+            <th className="py-1 font-medium">From</th>
+            <th className="py-1 font-medium">To</th>
+            <th className="py-1 text-right font-medium">Held</th>
+            <th className="py-1 pl-3 font-medium">Ended by</th>
+          </tr>
+        </thead>
+        <tbody>
+          {segments.map((g, i) => (
+            <tr key={i} className="border-t border-border/50">
+              <td className="py-1 tabular text-muted">{i + 1}</td>
+              <td className="py-1 tabular">{g.start_s.toFixed(1)} s</td>
+              <td className="py-1 tabular">{g.end_s.toFixed(1)} s</td>
+              <td className={`py-1 text-right tabular ${g.duration_s === longest ? "font-semibold text-foreground" : ""}`}>
+                {g.duration_s.toFixed(1)} s{g.duration_s === longest ? " ★" : ""}
+              </td>
+              <td className="py-1 pl-3 text-muted">{holdEndLabel(g.ended_by)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function holdEndLabel(r: HoldSegment["ended_by"]): string {
+  switch (r) {
+    case "foot_touchdown": return "foot touched down";
+    case "arm_grab": return "reached for support";
+    case "hop": return "stance foot moved";
+    case "window_end": return "window ended";
+    case "stopped": return "stopped by operator";
+  }
+}
+
 function terminationLabel(trial: TrialResult): string {
+  if (trial.termination === "window_end") {
+    return `Window complete (${trial.hold_capped_at} s)`;
+  }
   if (trial.termination === "max_time") {
     return `Max time reached (${trial.hold_capped_at} s)`;
   }

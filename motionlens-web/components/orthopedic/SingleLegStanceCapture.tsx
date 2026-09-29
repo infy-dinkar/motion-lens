@@ -8,9 +8,19 @@
 // (operator gives the verbal "close your eyes" instruction in
 // person; this keeps the flow simple and reliable across devices).
 //
-// Each trial: patient lifts the leg, stance auto-detects, timer
-// starts. Trial auto-terminates on foot-touchdown / arm-grab /
-// hop / max-time / manual stop.
+// Each trial is a fixed WINDOW — 60 s eyes open, 30 s eyes closed —
+// and the timer runs from the moment the trial starts. Inside the
+// window the patient may lift, drop and lift again as many times as
+// they like: a foot touchdown, an arm grab or a hop ends the current
+// HOLD, not the trial. Only the window end or the Stop button ends the
+// trial. The score is the longest single hold, and every hold is
+// listed on the report.
+//
+// It used to end the trial at the first touchdown, and to wait for a
+// lift before starting the timer at all — so a patient who dropped
+// the foot at 2 s and then held for 40 s was recorded as 2 s, and one
+// whose lift the model missed for 8 s got no trial. See
+// lib/orthopedic/singleLegStance.ts, "Window-based live trial".
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -44,7 +54,8 @@ import {
   HOP_WINDOW_DURATION_MS,
   MAX_EYES_CLOSED_SEC,
   MAX_EYES_OPEN_SEC,
-  ONSET_TIMEOUT_SEC,
+  MIN_HOLD_SEGMENT_SEC,
+  REARM_GROUNDED_MS,
   SAMPLE_INTERVAL_MS,
   analyzeSingleLegStanceUpload,
   buildInterpretation,
@@ -58,12 +69,14 @@ import {
   isFootTouchdown,
   isHopInWindow,
   isLegLifted,
-  summarizeTrial,
+  summarizeWindowTrial,
   type Condition,
   type FrameSample,
   type SessionResult,
   type Side,
-  type Termination,
+  type HoldEndReason,
+  type HoldSegment,
+  type TrialEvent,
   type TrialResult,
 } from "@/lib/orthopedic/singleLegStance";
 import { LM_LIVE as LM } from "@/lib/pose/landmarks-live";
@@ -109,6 +122,36 @@ interface RecordingState {
   /** Rolling window of stance-ankle Y for hop detection. */
   stanceAnkleWindow: Array<{ t_ms: number; y: number }>;
   screenshot: string | null;
+  /** Window model: the holds recorded so far and the one in progress. */
+  segments: HoldSegment[];
+  events: TrialEvent[];
+  lifted: boolean;
+  segmentStartAt: number | null;
+  /** When the foot last came down; a new lift is accepted only after
+   *  REARM_GROUNDED_MS so one touchdown is not counted as several. */
+  groundedSince: number | null;
+}
+
+/** Close the hold in progress. Short flaps around the touchdown
+ *  threshold are logged as events but not counted as holds. */
+function closeSegment(rec: RecordingState, nowMs: number, endedBy: HoldEndReason): void {
+  if (!rec.lifted || rec.segmentStartAt === null) return;
+  const start_s = (rec.segmentStartAt - rec.startedAt) / 1000;
+  const end_s = (nowMs - rec.startedAt) / 1000;
+  const duration_s = end_s - start_s;
+  if (duration_s >= MIN_HOLD_SEGMENT_SEC) {
+    rec.segments.push({
+      start_s: Math.round(start_s * 10) / 10,
+      end_s: Math.round(end_s * 10) / 10,
+      duration_s: Math.round(duration_s * 10) / 10,
+      ended_by: endedBy,
+    });
+  }
+  rec.events.push({ t_s: Math.round(end_s * 10) / 10, kind: endedBy });
+  rec.lifted = false;
+  rec.segmentStartAt = null;
+  rec.groundedSince = nowMs;
+  rec.stanceAnkleWindow = [];
 }
 
 
@@ -154,9 +197,11 @@ export function SingleLegStanceCapture() {
     setCoachMsg(msg);
   }, []);
 
-  const finishTrial = useCallback((termination: Termination) => {
+  const finishTrial = useCallback((termination: "window_end" | "stopped") => {
     const rec = recordingRef.current;
     if (!rec) return;
+    const endedAt = Date.now();
+    closeSegment(rec, endedAt, termination);
 
     // Fallback screenshot — same pattern as the other tests.
     if (!rec.screenshot) {
@@ -169,13 +214,14 @@ export function SingleLegStanceCapture() {
       }
     }
 
-    const startMs = rec.firstStanceAt ?? rec.startedAt;
-    const summary: TrialResult = summarizeTrial({
+    const summary: TrialResult = summarizeWindowTrial({
       side: rec.side,
       condition: rec.condition,
-      startedAtMs: startMs,
-      endedAtMs: Date.now(),
+      windowStartMs: rec.startedAt,
+      endedAtMs: endedAt,
       termination,
+      segments: rec.segments,
+      events: rec.events,
       hipPath: rec.hipPath,
       trunkLeans: rec.trunkLeans,
       samples: rec.samples,
@@ -220,7 +266,8 @@ export function SingleLegStanceCapture() {
     if (tNow - rec.lastSampleAt < SAMPLE_INTERVAL_MS) return;
     rec.lastSampleAt = tNow;
 
-    const elapsedSinceStart = (tNow - rec.startedAt) / 1000;
+    const tMs = tNow - rec.startedAt;
+    const tS = tMs / 1000;
     const cap = rec.condition === "eyes_open" ? MAX_EYES_OPEN_SEC : MAX_EYES_CLOSED_SEC;
 
     const detected = detectStanceSide(kp);
@@ -229,96 +276,88 @@ export function SingleLegStanceCapture() {
     const bodyH  = computeBodyHeightPx(kp);
     const trunkLean = computeTrunkLean(kp);
 
-    // Record a sample even before stance is achieved, so the saved
-    // landmarks JSON covers the whole trial duration.
+    // Every frame of the window is recorded, lifted or not, so the
+    // saved landmarks cover the whole trial.
     rec.samples.push({
-      t_ms: tNow - rec.startedAt,
+      t_ms: tMs,
       hip_x: hipMid?.x ?? null,
       hip_y: hipMid?.y ?? null,
       trunk_lean_deg: trunkLean,
     });
     rec.keypoints.push(kp.map((p) => ({ x: p.x, y: p.y, score: p.score ?? 0 })));
 
-    // Pre-onset (waiting for leg lift).
-    if (rec.firstStanceAt === null) {
-      // Three-tier check, ordered most→least specific:
-      //   1. Exact stance-side match (best — patient lifted the
-      //      expected leg, MoveNet labels are confident).
-      //   2. Any leg lifted (fallback — MoveNet labels can flip on
-      //      back-of-camera or partial-occlusion frames; we trust the
-      //      operator's clicked side and start the timer anyway).
-      //   3. Otherwise keep waiting.
-      const lifted = detected === rec.side || isLegLifted(kp);
-      if (lifted) {
-        // Stance achieved. Reset baseline timestamps so hold-time
-        // measures from this point.
-        rec.firstStanceAt = tNow;
-        rec.startedAt = tNow;
-        rec.hipPath = [];
-        rec.trunkLeans = [];
+    // The window is the only clock. Nothing below ends the trial.
+    if (tS >= cap) {
+      finishTrial("window_end");
+      return;
+    }
+
+    const liftedNow = detected === rec.side || isLegLifted(kp);
+    const otherLeg = rec.side === "left" ? "right" : "left";
+
+    // ── Grounded: waiting for a lift (the first, or the next).
+    if (!rec.lifted) {
+      const rearmed =
+        rec.groundedSince === null || tNow - rec.groundedSince >= REARM_GROUNDED_MS;
+      if (liftedNow && rearmed) {
+        rec.lifted = true;
+        rec.segmentStartAt = tNow;
         rec.stanceAnkleWindow = [];
-        setCoachIfChanged(
-          `Hold steady — max ${cap.toFixed(0)} s. Trial ends if your foot touches down or you reach for support.`,
-        );
-        return;
-      }
-      // No lift yet — coach the patient.
-      if (elapsedSinceStart > ONSET_TIMEOUT_SEC) {
-        finishTrial("no_lift_detected");
+        if (rec.firstStanceAt === null) rec.firstStanceAt = tNow;
+        rec.events.push({ t_s: Math.round(tS * 10) / 10, kind: "lift" });
+        setCoachIfChanged("Holding — keep it up.");
         return;
       }
       setCoachIfChanged(
-        `Lift your ${rec.side === "left" ? "right" : "left"} leg — keep the ${rec.side} foot planted.`,
+        rec.segments.length === 0 && rec.events.length === 0
+          ? `Lift your ${otherLeg} leg — keep the ${rec.side} foot planted. The ${cap.toFixed(0)} s window is running.`
+          : `Foot down — lift your ${otherLeg} leg again when you are ready. ${(cap - tS).toFixed(0)} s left.`,
       );
       return;
     }
 
-    // POST-ONSET — track hip-mid for sway, watch terminations.
+    // ── Lifted: track sway and lean, watch for the end of THIS hold.
     if (hipMid) rec.hipPath.push({ x: hipMid.x, y: hipMid.y });
     if (trunkLean !== null) rec.trunkLeans.push(trunkLean);
 
-    // Foot touchdown.
+    let endedBy: HoldEndReason | null = null;
     if (isFootTouchdown(kp, rec.side)) {
-      finishTrial("foot_touchdown");
-      return;
-    }
-
-    // Arm grab.
-    if (isArmGrab(kp)) {
-      finishTrial("arm_grab");
-      return;
-    }
-
-    // Hop / stance foot reposition. Tracks a rolling window of
-    // stance-ankle Y; if the spread exceeds the threshold inside
-    // the window, we call it a hop.
-    const stanceAnkleIdx = rec.side === "left" ? LM.LEFT_ANKLE : LM.RIGHT_ANKLE;
-    const stanceAnkle = kp[stanceAnkleIdx];
-    if (stanceAnkle && (stanceAnkle.score ?? 0) >= 0.3 && bodyH) {
-      const t = tNow - rec.startedAt;
-      rec.stanceAnkleWindow.push({ t_ms: t, y: stanceAnkle.y });
-      while (
-        rec.stanceAnkleWindow.length > 0 &&
-        t - rec.stanceAnkleWindow[0].t_ms > HOP_WINDOW_DURATION_MS
-      ) {
-        rec.stanceAnkleWindow.shift();
-      }
-      if (isHopInWindow(rec.stanceAnkleWindow, bodyH)) {
-        finishTrial("hop");
-        return;
+      endedBy = "foot_touchdown";
+    } else if (isArmGrab(kp)) {
+      endedBy = "arm_grab";
+    } else {
+      // Hop / stance foot reposition: rolling window of stance-ankle Y.
+      const stanceAnkleIdx = rec.side === "left" ? LM.LEFT_ANKLE : LM.RIGHT_ANKLE;
+      const stanceAnkle = kp[stanceAnkleIdx];
+      if (stanceAnkle && (stanceAnkle.score ?? 0) >= 0.3 && bodyH) {
+        rec.stanceAnkleWindow.push({ t_ms: tMs, y: stanceAnkle.y });
+        while (
+          rec.stanceAnkleWindow.length > 0 &&
+          tMs - rec.stanceAnkleWindow[0].t_ms > HOP_WINDOW_DURATION_MS
+        ) {
+          rec.stanceAnkleWindow.shift();
+        }
+        if (isHopInWindow(rec.stanceAnkleWindow, bodyH)) endedBy = "hop";
       }
     }
 
-    // Max-time ceiling.
-    const heldSec = (tNow - rec.firstStanceAt) / 1000;
-    if (heldSec >= cap) {
-      finishTrial("max_time");
+    if (endedBy !== null) {
+      // The hold ends; the window does not.
+      closeSegment(rec, tNow, endedBy);
+      const why =
+        endedBy === "foot_touchdown" ? "Foot touched down"
+        : endedBy === "arm_grab" ? "Reached for support"
+        : "Stance foot moved";
+      setCoachIfChanged(`${why} — lift again when you are ready. ${(cap - tS).toFixed(0)} s left.`);
       return;
     }
 
-    // Live coaching (hold-time readout).
+    const heldSec = (tNow - (rec.segmentStartAt ?? tNow)) / 1000;
+    const longest = rec.segments.reduce((m, g) => Math.max(m, g.duration_s), 0);
     setCoachIfChanged(
-      `Holding — ${heldSec.toFixed(1)} s of up to ${cap.toFixed(0)} s.`,
+      `Holding — ${heldSec.toFixed(1)} s` +
+      (longest > 0 ? ` (best so far ${Math.max(longest, heldSec).toFixed(1)} s)` : "") +
+      ` · ${(cap - tS).toFixed(0)} s left in the window.`,
     );
 
     // Suppress unused warning in dev — shoulder midpoint isn't
@@ -487,10 +526,15 @@ export function SingleLegStanceCapture() {
       trunkLeans: [],
       stanceAnkleWindow: [],
       screenshot: null,
+      segments: [],
+      events: [],
+      lifted: false,
+      segmentStartAt: null,
+      groundedSince: null,
     };
     lastCoachRef.current = "";
     setCoachMsg(
-      `Lift your ${side === "left" ? "right" : "left"} leg to begin — timer starts when stance is detected.`,
+      `Lift your ${side === "left" ? "right" : "left"} leg — the ${condition === "eyes_open" ? MAX_EYES_OPEN_SEC : MAX_EYES_CLOSED_SEC} s window is running.`,
     );
     setPhase("recording");
   }
@@ -549,10 +593,15 @@ export function SingleLegStanceCapture() {
   }
 
   // Capture view ------------------------------------------------------
-  const elapsedSec =
-    phase === "recording" && recordingRef.current?.firstStanceAt !== null && recordingRef.current
-      ? (now - (recordingRef.current.firstStanceAt ?? now)) / 1000
-      : 0;
+  // The window clock runs from the trial start, lift or no lift.
+  const rec = phase === "recording" ? recordingRef.current : null;
+  const elapsedSec = rec ? Math.max(0, (now - rec.startedAt) / 1000) : 0;
+  const currentHoldSec =
+    rec && rec.lifted && rec.segmentStartAt !== null ? (now - rec.segmentStartAt) / 1000 : 0;
+  const longestSoFar = rec
+    ? Math.max(currentHoldSec, rec.segments.reduce((m, g) => Math.max(m, g.duration_s), 0))
+    : 0;
+  const touchdownsSoFar = rec ? rec.events.filter((e) => e.kind !== "lift").length : 0;
   const liveCondition = recordingRef.current?.condition ?? null;
   const cap = liveCondition === "eyes_closed" ? MAX_EYES_CLOSED_SEC : MAX_EYES_OPEN_SEC;
   const liveSide = recordingRef.current?.side ?? null;
@@ -859,11 +908,16 @@ export function SingleLegStanceCapture() {
                     ● Recording
                   </p>
                   <p className="tabular text-2xl font-semibold text-white">
-                    {recordingRef.current.firstStanceAt === null ? "—" : `${elapsedSec.toFixed(1)}s`}
+                    {Math.max(0, cap - elapsedSec).toFixed(0)}s
+                    <span className="ml-1 text-xs font-normal text-white/60">left</span>
                   </p>
                   <p className="text-[10px] text-white/70">
                     {liveSide === "left" ? "Left" : "Right"} leg ·{" "}
-                    {liveCondition === "eyes_closed" ? "eyes closed" : "eyes open"} · max {cap.toFixed(0)}s
+                    {liveCondition === "eyes_closed" ? "eyes closed" : "eyes open"} · {cap.toFixed(0)}s window
+                  </p>
+                  <p className="mt-1 tabular text-[11px] text-emerald-200">
+                    {recordingRef.current.lifted ? `holding ${currentHoldSec.toFixed(1)}s` : "foot down"}
+                    {" · "}best {longestSoFar.toFixed(1)}s · drops {touchdownsSoFar}
                   </p>
                 </div>
               )}
@@ -875,7 +929,7 @@ export function SingleLegStanceCapture() {
                 <AutoFlowCountdownCard
                   countdown={countdown}
                   onSkip={skipCountdown}
-                  hint={`${pendingTrial.side === "left" ? "Left" : "Right"}-leg stance (${pendingTrial.condition === "eyes_closed" ? "eyes closed" : "eyes open"}) — the timer starts once the stance is detected.`}
+                  hint={`${pendingTrial.side === "left" ? "Left" : "Right"}-leg stance (${pendingTrial.condition === "eyes_closed" ? "eyes closed" : "eyes open"}) — the ${pendingTrial.condition === "eyes_closed" ? MAX_EYES_CLOSED_SEC : MAX_EYES_OPEN_SEC} s window starts right after the countdown.`}
                 />
               )}
 
@@ -928,12 +982,11 @@ export function SingleLegStanceCapture() {
                 <div className="rounded-card border border-border bg-surface p-4 space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium text-foreground">
-                      {recordingRef.current.firstStanceAt === null
-                        ? `Waiting for stance — ${liveSide === "left" ? "Left" : "Right"}-leg ${liveCondition === "eyes_closed" ? "(eyes closed)" : "(eyes open)"}`
-                        : `Recording — ${liveSide === "left" ? "Left" : "Right"}-leg ${liveCondition === "eyes_closed" ? "(eyes closed)" : "(eyes open)"}`}
+                      Recording — {liveSide === "left" ? "Left" : "Right"}-leg {liveCondition === "eyes_closed" ? "(eyes closed)" : "(eyes open)"}
                     </p>
                     <p className="tabular text-2xl font-semibold text-accent">
-                      {recordingRef.current.firstStanceAt === null ? "—" : `${elapsedSec.toFixed(1)}s`}
+                      {elapsedSec.toFixed(1)}s
+                      <span className="ml-1 text-xs font-normal text-muted">/ {cap.toFixed(0)}s</span>
                     </p>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-elevated">
@@ -954,7 +1007,7 @@ export function SingleLegStanceCapture() {
                 <p className="font-semibold text-foreground">Session brief</p>
                 <ol className="mt-2 list-decimal space-y-1 pl-4">
                   <li>Patient barefoot, facing the camera, full body in frame.</li>
-                  <li>Pick a trial — 3-2-1 countdown, then the timer starts on leg lift.</li>
+                  <li>Pick a trial — 3-2-1 countdown, then the window runs for its full length. Dropping the foot ends that hold, not the trial; lift again and keep going.</li>
                   <li>Trials end on foot touchdown, arm grab, hop, or max time.</li>
                 </ol>
               </div>
