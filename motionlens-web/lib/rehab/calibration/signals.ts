@@ -101,12 +101,15 @@ export function readCalibSignal(
     case "pelvic_tilt":
       return computePelvicTiltDeg(kp);
     case "hip_mid_x_norm": {
-      // Hip midpoint as a fraction of frame width. The absolute number
-      // means nothing on its own; range minus rest is the shift. Kept
-      // in frame units rather than shoulder widths so a shoulder that
-      // drops out of view mid-hold does not change the scale.
+      // Hip midpoint as a fraction of frame width, MIRRORED (1 - x/w) —
+      // the weight-shift page's own convention, and it makes positive
+      // the patient's right when they face the camera, which is what
+      // the left/right filing in the session summary assumes. The
+      // absolute number means nothing; range minus rest is the shift.
+      // Frame units rather than shoulder widths so a shoulder dropping
+      // out of view mid-hold does not change the scale.
       const x = computeHipMidX(kp);
-      return x === null || frame.w <= 0 ? null : x / frame.w;
+      return x === null || frame.w <= 0 ? null : 1 - x / frame.w;
     }
     case "shoulder_hip_width_ratio": {
       // Retraction narrows the apparent shoulder width; dividing by

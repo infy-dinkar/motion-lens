@@ -396,8 +396,8 @@ export function Inner() {
               <li>
                 Patient stands next to a low platform / step
                 (~15–25 cm). Camera at hip height, ~2 m away,
-                roughly perpendicular to the body — frontal or
-                slightly lateral both work.
+                side-on to the body with the working leg nearest
+                the camera.
               </li>
               <li>
                 Test-side hip, knee, and ankle must all stay in

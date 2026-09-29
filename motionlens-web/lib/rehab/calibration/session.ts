@@ -15,7 +15,14 @@
 //     moves. The delta is small on purpose — it proves movement, it
 //     does not set a target.
 //
-//   • A two-sided range (side bend) must show BOTH sides. The second
+//   • With `contralateral`, only the working limb may move: a range
+//     hold where the OTHER side moved more is blocked. Seen on camera:
+//     knee extension calibrated with the wrong leg lifted.
+//
+//   • Per-exercise pose gates (poseGates.ts) block holds whose pose a
+//     single signal cannot check (external rotation, pelvic hold).
+//
+//   • A two-sided range (side bend, weight shift) must show BOTH sides. The second
 //     side hold is blocked until the reading is on the other side of
 //     rest from the first. Without this, staying bent on one side
 //     completed both holds.
@@ -43,7 +50,9 @@ import {
   readCalibSignal,
   type FrameSize,
   type Side,
+  otherSide,
 } from "@/lib/rehab/calibration/signals";
+import { poseGate } from "@/lib/rehab/calibration/poseGates";
 import {
   START_ANYWAY_MS,
   type CalibrationSpec,
@@ -96,6 +105,8 @@ export interface SessionState {
     viewRatio: number | null;
     facingDiff: number | null;
     scale: number | null;
+    /** Exercise-specific numbers (pose gate, contralateral, back view). */
+    extra: string | null;
   };
 }
 
@@ -126,6 +137,10 @@ export class CalibrationSession {
   private lastState: SessionState;
   private lastScale: number | null = null;
   private lastRef = { nx: 0.5, ny: 0.5 };
+  /** The other side's reading at the moment rest was recorded, for the
+   *  contralateral check; and its latest reading while resting. */
+  private restOther: number | null = null;
+  private lastOther: number | null = null;
 
   constructor(
     readonly spec: CalibrationSpec,
@@ -145,6 +160,8 @@ export class CalibrationSession {
     this.results = [];
     this.holdStartMs = null;
     this.lastScale = null;
+    this.restOther = null;
+    this.lastOther = null;
     this.lastState = this.snapshot(0, HOLD_MESSAGE.idle, null, [], false, 0, null);
   }
 
@@ -177,11 +194,42 @@ export class CalibrationSession {
       this.spec.signal, kp, this.side, this.spec.signalSide, frame,
     );
 
-    // Range holds must differ from rest by more than noise.
+    const minDelta = MIN_RANGE_DELTA[this.spec.unit];
     let block = ready.block;
+    const extra: string[] = [];
+    if (ready.debug.extra) extra.push(ready.debug.extra);
+
+    // The exercise's own pose check, when it has one.
+    if (block === null) {
+      const g = poseGate(this.spec.slug, kp, hold.id, this.side);
+      if (g.debug) extra.push(g.debug);
+      block = g.block;
+    }
+
+    // Only the working limb may move (opt-in per spec).
+    const checkOther = this.spec.contralateral === true && this.side !== null;
+    const otherNow = checkOther
+      ? this.readSignal(this.spec.signal, kp, otherSide(this.side!), this.spec.signalSide, frame)
+      : null;
+    if (hold.id === "rest") this.lastOther = otherNow;
+    if (block === null && checkOther && hold.id !== "rest" && value !== null && otherNow !== null) {
+      const rest = this.restValue();
+      if (rest !== null && this.restOther !== null) {
+        const own = Math.abs(value - rest);
+        const oth = Math.abs(otherNow - this.restOther);
+        extra.push(`own Δ ${own.toFixed(1)} · other Δ ${oth.toFixed(1)}`);
+        if (oth >= minDelta && oth > own) {
+          const limb = this.spec.parts.some((p) => p.part === "KNEE" || p.part === "ANKLE" || p.part === "HIP")
+            ? "leg" : "arm";
+          block = `Use your ${this.side!.toUpperCase()} ${limb}`;
+        }
+      }
+    }
+
+    // Range holds must differ from rest by more than noise.
     if (block === null && hold.id !== "rest" && value !== null) {
       const rest = this.restValue();
-      if (rest !== null && Math.abs(value - rest) < MIN_RANGE_DELTA[this.spec.unit]) {
+      if (rest !== null && Math.abs(value - rest) < minDelta) {
         block = "Move further — show me your range";
       }
       // The second side must be the other side of rest from the first.
@@ -189,7 +237,7 @@ export class CalibrationSession {
         const first = this.firstSideValue();
         const base = rest ?? 0;
         if (first !== null && Math.sign(value - base) === Math.sign(first - base)) {
-          block = "Now bend to the other side";
+          block = hold.otherSideMessage ?? "Now go to the other side";
         }
       }
     }
@@ -198,6 +246,7 @@ export class CalibrationSession {
     const elapsed = nowMs - this.holdStartMs;
 
     if (recorded !== null) {
+      if (hold.id === "rest") this.restOther = this.lastOther;
       this.results.push({ id: hold.id, value: recorded, skipped: false });
       this.advance();
       const next = this.spec.holds[this.index] ?? null;
@@ -223,7 +272,7 @@ export class CalibrationSession {
       elapsed >= START_ANYWAY_MS,
       elapsed,
       value,
-      ready.debug,
+      { ...ready.debug, extra: extra.length ? extra.join(" · ") : null },
     );
     return this.lastState;
   }
@@ -303,6 +352,7 @@ export class CalibrationSession {
         viewRatio: debug?.viewRatio ?? null,
         facingDiff: debug?.facingDiff ?? null,
         scale: this.lastScale,
+        extra: debug?.extra ?? null,
       },
       holdIndex: this.index,
       total: this.spec.holds.length,

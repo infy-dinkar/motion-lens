@@ -419,7 +419,7 @@ export function Inner() {
                 Get set up
               </h2>
               <p className="mt-1 text-sm text-muted">
-                Stand tall facing the camera with your body from{" "}
+                Stand tall with your back to the camera, body from{" "}
                 <span className="font-semibold text-foreground">shoulders to hips</span>{" "}
                 in frame (the hips let the system tell a real squeeze
                 apart from turning). When you start, a 3-2-1 countdown

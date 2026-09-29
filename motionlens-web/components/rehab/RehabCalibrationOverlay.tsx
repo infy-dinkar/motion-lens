@@ -146,6 +146,7 @@ function DebugReadout({ state }: { state: SessionState }) {
       <div>value {f(state.value, 1)} · rest {f(d.rest, 1)} · Δ {f(delta, 1)} (need ≥ {d.minDelta})</div>
       <div>drift {f(d.drift, 3)} (reset &gt; {STILL_TOLERANCE})</div>
       <div>view ratio {f(d.viewRatio)} · facing diff {f(d.facingDiff)} · scale {f(d.scale, 3)}</div>
+      {d.extra && <div>{d.extra}</div>}
       <div>
         {state.checks.map((c) => `${c.id}:${c.ok ? "ok" : "FAIL"}`).join("  ")}
       </div>

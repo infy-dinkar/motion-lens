@@ -46,6 +46,9 @@ export const FRAME_SLACK = 0.05;
  * are measured in the image regardless of which way the trunk points.
  */
 export const FRONTAL_MIN_RATIO = 0.45;
+/** Back view: mean nose + eye score at or above this means the face is
+ *  in view, so the patient is facing the camera. */
+export const BACK_VIEW_FACE_MAX = 0.6;
 export const SIDE_MAX_RATIO = 0.35;
 
 /** How much more visible the working side must be than the far side
@@ -94,6 +97,8 @@ export interface Readiness {
     /** Far-side minus working-side mean visibility; null when the
      *  facing check did not run. */
     facingDiff: number | null;
+    /** Exercise-specific readout (back view: face score, shoulder order). */
+    extra: string | null;
   };
 }
 
@@ -238,17 +243,21 @@ export function assessReadiness(
   const viewRatio = shoulderW !== null && torsoL !== null && torsoL > 1 ? shoulderW / torsoL : null;
   let viewOk = true;
   let viewMsg = "";
-  if (spec.view === "frontal" && (!present(kp, LS) || !present(kp, RS))) {
+  const wide = spec.view === "frontal" || spec.view === "back";
+  const wideMsg = spec.view === "back"
+    ? "Turn so your back faces the camera"
+    : "Turn to face the camera";
+  if (wide && (!present(kp, LS) || !present(kp, RS))) {
     // Facing the camera, both shoulders are in plain view. One of them
     // dropping below the floor is what a side-on patient looks like —
     // and it also makes the ratio below uncomputable, so without this
     // a side-on patient would pass a frontal check by default.
     viewOk = false;
-    viewMsg = "Turn to face the camera";
+    viewMsg = wideMsg;
   } else if (spec.view !== "either" && viewRatio !== null) {
-    if (spec.view === "frontal" && viewRatio < FRONTAL_MIN_RATIO) {
+    if (wide && viewRatio < FRONTAL_MIN_RATIO) {
       viewOk = false;
-      viewMsg = "Turn to face the camera";
+      viewMsg = wideMsg;
     } else if (spec.view === "side" && viewRatio > SIDE_MAX_RATIO) {
       viewOk = false;
       viewMsg = spec.posture === "supine"
@@ -256,6 +265,24 @@ export function assessReadiness(
         : spec.posture === "quadruped"
           ? "Set up so your side is toward the camera"
           : "Turn so your side faces the camera";
+    }
+  }
+  // Back view: wide is not enough, the patient must face AWAY. Two
+  // cues, either of which reads as "facing": the face is plainly seen,
+  // and the shoulders are in front-on order (raw video, not mirrored:
+  // facing the camera puts the LEFT shoulder at the larger x). A back
+  // view passes only when neither says facing.
+  let faceScore: number | null = null;
+  let shoulderOrder: "front" | "back" | null = null;
+  if (spec.view === "back" && viewOk) {
+    faceScore =
+      (score(kp, LM_LIVE.NOSE) + score(kp, LM_LIVE.LEFT_EYE) + score(kp, LM_LIVE.RIGHT_EYE)) / 3;
+    if (present(kp, LS) && present(kp, RS)) {
+      shoulderOrder = kp[LS].x > kp[RS].x ? "front" : "back";
+    }
+    if (faceScore >= BACK_VIEW_FACE_MAX || shoulderOrder === "front") {
+      viewOk = false;
+      viewMsg = "Turn around — your back should face the camera";
     }
   }
   checks.push({ id: "view", ok: viewOk, blocking: true, message: viewMsg });
@@ -340,8 +367,13 @@ export function assessReadiness(
   // The checklist stays in its natural order; only the ONE message the
   // patient acts on is reprioritised. A wrong-side swap is reported
   // ahead of the visibility failure it causes (see check 4).
+  // Same idea for the wide views: one shoulder present and the other
+  // not is a patient standing side-on, and "Step into view" would send
+  // them looking for a missing arm instead of turning.
+  const viewFirst = wide && !viewOk && present(kp, LS) !== present(kp, RS);
   const firstBlock =
     (swapped ? checks.find((c) => c.id === "facing") : null)
+    ?? (viewFirst ? checks.find((c) => c.id === "view") : null)
     ?? checks.find((c) => c.blocking && !c.ok)
     ?? null;
   const firstWarn = checks.find((c) => !c.blocking && !c.ok) ?? null;
@@ -352,7 +384,13 @@ export function assessReadiness(
     warn: firstWarn ? firstWarn.message : null,
     ref,
     scale,
-    debug: { viewRatio, facingDiff },
+    debug: {
+      viewRatio,
+      facingDiff,
+      extra: spec.view === "back"
+        ? `face ${faceScore === null ? "—" : faceScore.toFixed(2)} · shoulders ${shoulderOrder ?? "—"}`
+        : null,
+    },
   };
 }
 

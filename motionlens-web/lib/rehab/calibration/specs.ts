@@ -27,7 +27,9 @@
 // side-on), which is why the pages are the source of truth.
 
 /** Which way the patient should face. `either` skips the view check. */
-export type CalibView = "side" | "frontal" | "either";
+/** "back": frontal width, but the patient faces AWAY from the camera
+ *  (scapular set — the shoulder blades are what is being watched). */
+export type CalibView = "side" | "frontal" | "back" | "either";
 
 /** Body orientation. The view check assumes an upright trunk; floor
  *  postures need their own branch because the trunk is horizontal. */
@@ -97,6 +99,9 @@ export interface HoldSpec {
   title: string;
   /** What to tell the patient. Plain, one sentence. */
   instruction: string;
+  /** range_right only: the block message while the patient is still
+   *  on the first side. */
+  otherSideMessage?: string;
 }
 
 export interface CalibrationSpec {
@@ -112,6 +117,11 @@ export interface CalibrationSpec {
   signalSide: SignalSide;
   unit: SignalUnit;
   holds: HoldSpec[];
+  /** Only one limb should move. On a range hold, if the OTHER side's
+   *  reading moved more than the working side's (and past the minimum),
+   *  the hold is blocked with "Use your LEFT leg/arm". Off for
+   *  exercises where both limbs move together (squats). */
+  contralateral?: boolean;
   /** Anything a wiring engineer needs to know about this row. */
   note?: string;
 }
@@ -199,6 +209,7 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     parts: [W("HIP"), W("KNEE"), W("ANKLE")],
     scaleRef: "thigh",
     signal: "knee_flexion", signalSide: "working", unit: "deg",
+    contralateral: true,
     holds: [
       rest("Sit with the knee bent and relaxed."),
       range("Straighten the knee as far as you can, and hold."),
@@ -295,6 +306,7 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     parts: [B("HIP"), W("KNEE"), W("ANKLE")],
     scaleRef: "hipWidth",
     signal: "hip_abduction", signalSide: "working", unit: "deg",
+    contralateral: true,
     holds: [
       rest("Face the camera, feet together, hand on your support."),
       range("Lift your test leg straight out to the side, and hold."),
@@ -325,7 +337,7 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
   },
   "step-up": {
     slug: "step-up",
-    view: "either", posture: "standing", sided: true,
+    view: "side", posture: "standing", sided: true,
     parts: [W("HIP"), W("KNEE"), W("ANKLE")],
     scaleRef: "thigh",
     signal: "knee_flexion", signalSide: "working", unit: "deg",
@@ -333,7 +345,7 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
       rest("Stand beside the step."),
       range("Step up and stand tall on the step — and hold."),
     ],
-    note: "The page accepts frontal or slightly side-on, so the view check is skipped.",
+    note: "Side-on, working leg nearest the camera (the reference image). Knee flexion is only trustworthy side-on; a frontal view used to pass.",
   },
 
   // ── D. Frontal view — trunk and pelvis
@@ -347,7 +359,11 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     holds: [
       rest("Stand tall, arms at your sides."),
       { id: "range_left", title: "Show your range", instruction: "Bend to one side as far as is comfortable, and hold." },
-      { id: "range_right", title: "And the other side", instruction: "Now bend to the other side, and hold." },
+      {
+        id: "range_right", title: "And the other side",
+        instruction: "Now bend to the other side, and hold.",
+        otherSideMessage: "Now bend to the other side",
+      },
     ],
     note: "Three holds. The signal is SIGNED (positive = anatomical right), so left and right are told apart by sign, not by order: the patient may bend either way first, and the third hold is blocked until they bend to the other side.",
   },
@@ -371,18 +387,23 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     signal: "hip_mid_x_norm", signalSide: "none", unit: "ratio",
     holds: [
       rest("Stand centred and still."),
-      range("Shift your weight to one side without stepping, and hold."),
+      { id: "range_left", title: "Show your range", instruction: "Shift your weight to one side without stepping, and hold." },
+      {
+        id: "range_right", title: "And the other side",
+        instruction: "Now shift your weight to the other side, and hold.",
+        otherSideMessage: "Now shift to the other side",
+      },
     ],
     note: "The page already locks its own baseline from 10 frames; that logic stays exactly as it is. Hold 1 sits in front of it.",
   },
   "scapular-set": {
     slug: "scapular-set",
-    view: "frontal", posture: "standing", sided: false,
+    view: "back", posture: "standing", sided: false,
     parts: [B("SHOULDER"), B("HIP")],
     scaleRef: "shoulderWidth",
     signal: "shoulder_hip_width_ratio", signalSide: "none", unit: "ratio",
     holds: [
-      rest("Stand relaxed, arms at your sides."),
+      rest("Stand with your back to the camera, arms relaxed at your sides."),
       range("Squeeze your shoulder blades back and down, and hold."),
     ],
     note: "The page already locks its own baseline from 10 frames; that logic stays exactly as it is. Hold 1 sits in front of it.",
@@ -407,6 +428,7 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     parts: [B("SHOULDER"), W("ELBOW"), W("WRIST")],
     scaleRef: "shoulderWidth",
     signal: "forearm_rotation_proxy", signalSide: "working", unit: "deg",
+    contralateral: true,
     holds: [
       rest("Elbow tucked at your side, bent to 90 degrees, forearm pointing forward."),
       range("Rotate the forearm outward, keeping the elbow tucked — and hold."),
@@ -418,6 +440,7 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     parts: [B("SHOULDER"), W("WRIST")],
     scaleRef: "shoulderWidth",
     signal: "shoulder_abduction", signalSide: "working", unit: "deg",
+    contralateral: true,
     holds: [
       rest("Face the camera, arm relaxed."),
       range("Reach the arm straight up as high as is comfortable, and hold."),
