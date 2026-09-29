@@ -47,11 +47,14 @@ import {
 } from "@/components/rehab/SequenceChrome";
 import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
+import { useRehabCalibration } from "@/lib/rehab/calibration/useRehabCalibration";
+import { RehabCalibrationOverlay } from "@/components/rehab/RehabCalibrationOverlay";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { DEFAULT_LEVEL_INDEX } from "@/lib/rehab/progressionLadders";
 import { LM_LIVE as LM } from "@/lib/pose/landmarks-live";
 import { usePatientContext } from "@/hooks/usePatientContext";
 import type { Keypoint } from "@tensorflow-models/pose-detection";
+import type { LiveKeypoint } from "@/hooks/usePoseDetectionLive";
 import {
   buildSkeletonPosePayload,
   elapsedSecondsSince,
@@ -128,6 +131,11 @@ export function Inner() {
   const circlesCountRef = useRef<number>(0);
   const peakRadiusRef = useRef<number>(0);
 
+  // Two short holds before the countdown: start pose, then show your
+  // range. Records rest and range under metrics.calibration; changes
+  // nothing about how the exercise itself is scored.
+  const calibration = useRehabCalibration("wall-clock", side, side !== null);
+
   const {
     phase: sessionPhase,
     countdown,
@@ -145,7 +153,11 @@ export function Inner() {
     setCircles(0);
     setElapsedSec(0);
     sessionStartRef.current = performance.now();
-  }, seq.countdownSec);
+  }, seq.countdownSec, calibration);
+  // Latest calibration summary for the payload, through a ref so
+  // buildRehabPayload keeps its dependency list unchanged.
+  const calibSummaryRef = useRef(calibration.summary);
+  calibSummaryRef.current = calibration.summary;
 
   useEffect(() => {
     if (sessionPhase !== "live") return;
@@ -155,6 +167,7 @@ export function Inner() {
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
+      calibration.feed(kp as unknown as LiveKeypoint[], video);
       if (!side) return;
       const snap = kpToPoseSnapshot(kp, video.videoWidth, video.videoHeight);
       if (snap) lastKpRef.current = snap;
@@ -241,6 +254,7 @@ export function Inner() {
       movement: "wall-clock",
       side,
       metrics: {
+        calibration: calibSummaryRef.current(),
         exercise_slug: "wall-clock",
         mechanic_id: "swing_count",
         started_at_ms: sessionStartRef.current,
@@ -321,6 +335,12 @@ export function Inner() {
                     <p className="tabular text-2xl font-semibold text-white">{circles}<span className="text-sm text-zinc-400"> / {TARGET_CIRCLES}</span></p>
                     <p className="mt-1 text-[10px] text-zinc-300">{tracking ? "circle the clock" : "waiting…"}</p>
                   </div>
+                  {sessionPhase === "calibrate" && calibration.state && (
+                    <RehabCalibrationOverlay
+                      state={calibration.state}
+                      onStartAnyway={calibration.startAnyway}
+                    />
+                  )}
                   {sessionPhase === "countdown" && countdown !== null && (
                     <AutoFlowCountdownOverlay countdown={countdown} />
                   )}

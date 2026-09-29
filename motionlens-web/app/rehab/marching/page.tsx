@@ -50,6 +50,8 @@ import {
 } from "@/components/rehab/SequenceChrome";
 import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
+import { useRehabCalibration } from "@/lib/rehab/calibration/useRehabCalibration";
+import { RehabCalibrationOverlay } from "@/components/rehab/RehabCalibrationOverlay";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import {
   buildSkeletonPosePayload,
@@ -171,6 +173,11 @@ export function Inner() {
   // (the duration-pick click only UNLOCKED the element). All
   // session-scoped refs reset at the same transition so countdown
   // framing lifts never count into the payload.
+  // Two short holds before the countdown: start pose, then show your
+  // range. Records rest and range under metrics.calibration; changes
+  // nothing about how the exercise itself is scored.
+  const calibration = useRehabCalibration("marching", null, durationMin !== null);
+
   const {
     phase: sessionPhase,
     countdown,
@@ -198,10 +205,15 @@ export function Inner() {
       audioRef.current.currentTime = 0;
       void audioRef.current.play().catch(() => {});
     }
-  }, seq.countdownSec);
+  }, seq.countdownSec, calibration);
+  // Latest calibration summary for the payload, through a ref so
+  // buildRehabPayload keeps its dependency list unchanged.
+  const calibSummaryRef = useRef(calibration.summary);
+  calibSummaryRef.current = calibration.summary;
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
+      calibration.feed(kp as unknown as LiveKeypoint[], video);
       if (durationMin === null) return;
       const snap = kpToPoseSnapshot(kp, video.videoWidth, video.videoHeight);
       if (snap) lastKpRef.current = snap;
@@ -394,6 +406,7 @@ export function Inner() {
       module: "rehab" as const,
       movement: "marching",
       metrics: {
+        calibration: calibSummaryRef.current(),
         exercise_slug: "marching",
         mechanic_id: "metronome",
         started_at_ms: sessionStartRef.current,
@@ -520,6 +533,12 @@ export function Inner() {
                       hip / knee
                     </p>
                   </div>
+                  {sessionPhase === "calibrate" && calibration.state && (
+                    <RehabCalibrationOverlay
+                      state={calibration.state}
+                      onStartAnyway={calibration.startAnyway}
+                    />
+                  )}
                   {sessionPhase === "countdown" && countdown !== null && (
                     <AutoFlowCountdownOverlay countdown={countdown} />
                   )}

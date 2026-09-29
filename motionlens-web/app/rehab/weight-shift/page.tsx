@@ -53,6 +53,8 @@ import {
 } from "@/components/rehab/SequenceChrome";
 import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
+import { useRehabCalibration } from "@/lib/rehab/calibration/useRehabCalibration";
+import { RehabCalibrationOverlay } from "@/components/rehab/RehabCalibrationOverlay";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import {
   buildSkeletonPosePayload,
@@ -187,6 +189,11 @@ export function Inner() {
   // auto-save. Session-scoped refs reset at the live transition so
   // cursor motion during the countdown never counts toward the
   // payload's trackers or duration.
+  // Two short holds before the countdown: start pose, then show your
+  // range. Records rest and range under metrics.calibration; changes
+  // nothing about how the exercise itself is scored.
+  const calibration = useRehabCalibration("weight-shift", null, phase === "playing");
+
   const {
     phase: sessionPhase,
     countdown,
@@ -205,7 +212,11 @@ export function Inner() {
     repVisitedRef.current = { left: false, right: false };
     repsCountRef.current = 0;
     setReps(0);
-  }, seq.countdownSec);
+  }, seq.countdownSec, calibration);
+  // Latest calibration summary for the payload, through a ref so
+  // buildRehabPayload keeps its dependency list unchanged.
+  const calibSummaryRef = useRef(calibration.summary);
+  calibSummaryRef.current = calibration.summary;
 
   const handleWSShapshot = useCallback((state: WeightShiftState, _score: MechanicScore) => {
     // Harvest mechanic state for the saved payload. Completion is now
@@ -258,6 +269,7 @@ export function Inner() {
       module: "rehab" as const,
       movement: "weight-shift",
       metrics: {
+        calibration: calibSummaryRef.current(),
         exercise_slug: "weight-shift",
         mechanic_id: "weight_shift",
         started_at_ms: sessionStartRef.current,
@@ -290,6 +302,7 @@ export function Inner() {
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
+      calibration.feed(kp as unknown as LiveKeypoint[], video);
       const vw = video.videoWidth;
       const vh = video.videoHeight;
       if (vw <= 0 || vh <= 0) return;
@@ -513,6 +526,12 @@ export function Inner() {
                     <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-500/30 px-1.5 py-0.5 text-[10px] font-semibold text-rose-100">STEP</p>
                   )}
                 </div>
+                {sessionPhase === "calibrate" && calibration.state && (
+                  <RehabCalibrationOverlay
+                    state={calibration.state}
+                    onStartAnyway={calibration.startAnyway}
+                  />
+                )}
                 {sessionPhase === "countdown" && countdown !== null && (
                   <AutoFlowCountdownOverlay countdown={countdown} />
                 )}
