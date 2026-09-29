@@ -39,6 +39,30 @@ export const COMPENSATORY_TRUNK_LEAN_DEG = 7;
 export const NEGATIVE_DROP_MAX_DEG = 2;       // <2° → negative
 export const COMPENSATED_DROP_MAX_DEG = 5;    // 2-5° → compensated, >5° → positive
 
+// ── Window model ─────────────────────────────────────────────────
+//
+// The live test is a fixed TARGET_HOLD_SECONDS window that starts when
+// the countdown ends and runs to the end regardless of what the patient
+// does. A foot touchdown or a pelvic-tilt spike ends the current HOLD,
+// not the test; the patient lifts again and a new hold begins. The
+// score is the longest single hold. It used to end the side at the
+// first touchdown, and to complete the side 30 s after the countdown
+// even if the leg had only just been lifted.
+
+/** A hold shorter than this is a flap around the stance threshold, not
+ *  a stance. Logged, not counted. */
+export const MIN_HOLD_SEGMENT_SEC = 0.5;
+
+export type TrendelenburgHoldEnd = "foot_touch" | "spike" | "window_end" | "stopped";
+
+export interface TrendelenburgHold {
+  /** Seconds from the start of the window. */
+  start_s: number;
+  end_s: number;
+  duration_s: number;
+  ended_by: TrendelenburgHoldEnd;
+}
+
 // Single-leg-stance auto-detection: lifted ankle must be at least this
 // fraction of the body's pixel-height above the stance ankle to count.
 // 6% catches a clearly-lifted leg without false-positives from
@@ -174,14 +198,99 @@ export interface TrendelenburgSideResult {
   short_hold: boolean;
   /** True if compensatory trunk lean exceeded the threshold. */
   trendelenburg_gait_pattern: boolean;
-  /** Reason the hold ended: "completed" (full 30s) | "foot_touch" | "spike". */
-  termination: "completed" | "foot_touch" | "spike";
+  /** Why the side ended. "completed" / "foot_touch" / "spike" are the
+   *  legacy single-hold trial (and the upload path); "window_end" and
+   *  "stopped" are the window model. */
+  termination: "completed" | "foot_touch" | "spike" | "window_end" | "stopped";
   /** Time-series of pelvic tilt + trunk lean over the hold (10 Hz). */
   samples: TrendelenburgFrameSample[];
   /** Per-frame keypoints over the hold (PDF Section 2 (a) compliance). */
   keypoints: Array<Array<{ x: number; y: number; score?: number }>>;
   /** JPEG data-URL of the peak-drop frame (skeleton-overlaid). */
   peak_screenshot_data_url: string | null;
+
+  // ── Window-model fields. Present on live sides recorded since the
+  //    window model shipped; absent on older saved reports and on the
+  //    upload path, which the report handles.
+  window_seconds?: number;
+  hold_segments?: TrendelenburgHold[];
+  /** Same as hold_seconds — spelled out so the meaning is explicit. */
+  longest_hold_seconds?: number;
+  total_stance_seconds?: number;
+  lift_count?: number;
+  /** Holds ended by the foot coming down. */
+  touchdown_count?: number;
+  /** Holds ended by a pelvic-tilt spike. */
+  spike_count?: number;
+  time_to_first_lift_s?: number | null;
+}
+
+/**
+ * Summarise a window-model side.
+ *
+ * `hold_seconds` is the LONGEST hold, so the report, the interpretation
+ * and short_hold keep working unchanged and now describe the best hold
+ * rather than the first. Samples carry t_ms from the start of THEIR
+ * hold, so the "stable portion after 2 s" rule applies per hold.
+ */
+export function summarizeSideWindow(
+  side: Side,
+  windowStartMs: number,
+  endedAtMs: number,
+  termination: "window_end" | "stopped",
+  segments: TrendelenburgHold[],
+  samples: TrendelenburgFrameSample[],
+  keypoints: Array<Array<{ x: number; y: number; score?: number }>>,
+  peakScreenshotDataUrl: string | null,
+): TrendelenburgSideResult {
+  const longest = segments.reduce((m, g) => Math.max(m, g.duration_s), 0);
+  const total = segments.reduce((a, g) => a + g.duration_s, 0);
+  const round1 = (v: number) => Math.round(v * 10) / 10;
+
+  const drops: number[] = [];
+  const stableDrops: number[] = [];
+  let maxLean = 0;
+  for (const smp of samples) {
+    if (smp.pelvic_tilt_deg !== null) {
+      const d = dropForStance(smp.pelvic_tilt_deg, side);
+      drops.push(d);
+      if (smp.t_ms / 1000 >= STABLE_PORTION_START_SEC) stableDrops.push(d);
+    }
+    if (smp.trunk_lean_deg !== null) {
+      const lean = leanTowardStance(smp.trunk_lean_deg, side);
+      if (lean > maxLean) maxLean = lean;
+    }
+  }
+  const maxDrop = drops.length ? Math.max(0, ...drops) : 0;
+  const meanDrop = stableDrops.length
+    ? stableDrops.reduce((a, b) => a + b, 0) / stableDrops.length
+    : 0;
+
+  const firstLift = segments.length ? segments[0].start_s : null;
+
+  return {
+    side_tested: side,
+    hold_seconds: round1(longest),
+    max_drop_deg: maxDrop,
+    mean_drop_deg: meanDrop,
+    max_compensatory_lean_deg: maxLean,
+    classification: classifyMaxDrop(maxDrop),
+    short_hold: longest < SHORT_HOLD_THRESHOLD_SEC,
+    trendelenburg_gait_pattern: maxLean > COMPENSATORY_TRUNK_LEAN_DEG,
+    termination,
+    samples,
+    keypoints,
+    peak_screenshot_data_url: peakScreenshotDataUrl,
+
+    window_seconds: round1(Math.min(TARGET_HOLD_SECONDS, Math.max(0, (endedAtMs - windowStartMs) / 1000))),
+    hold_segments: segments,
+    longest_hold_seconds: round1(longest),
+    total_stance_seconds: round1(total),
+    lift_count: segments.length,
+    touchdown_count: segments.filter((g) => g.ended_by === "foot_touch").length,
+    spike_count: segments.filter((g) => g.ended_by === "spike").length,
+    time_to_first_lift_s: firstLift === null ? null : round1(firstLift),
+  };
 }
 
 export interface TrendelenburgFullResult {
@@ -272,10 +381,28 @@ export function buildInterpretation(result: TrendelenburgFullResult): string {
       );
     }
 
+    if (r.hold_segments) {
+      const n = r.hold_segments.length;
+      const td = r.touchdown_count ?? 0;
+      const sp = r.spike_count ?? 0;
+      parts.push(
+        `${sideLabel}: ${n === 0 ? "no hold" : n === 1 ? "1 hold" : `${n} holds`} in the ` +
+        `${r.window_seconds ?? TARGET_HOLD_SECONDS}s window` +
+        (n > 0
+          ? `; longest ${r.hold_seconds.toFixed(1)}s, ${(r.total_stance_seconds ?? 0).toFixed(1)}s on one leg in total` +
+            (td > 0 ? `, foot down ${td === 1 ? "once" : `${td} times`}` : "") +
+            (sp > 0 ? `, ${sp === 1 ? "one pelvic-tilt spike" : `${sp} pelvic-tilt spikes`}` : "") + "."
+          : " — no clear leg lift was detected."),
+      );
+      if (r.termination === "stopped") parts.push(`${sideLabel}: stopped by the operator before the window ended.`);
+    }
     if (r.short_hold) {
       parts.push(
-        `${sideLabel}: hold ended early at ${r.hold_seconds.toFixed(1)}s ` +
-        `(< ${SHORT_HOLD_THRESHOLD_SEC}s) — additional balance / strength concern.`,
+        r.hold_segments
+          ? `${sideLabel}: longest hold only ${r.hold_seconds.toFixed(1)}s ` +
+            `(< ${SHORT_HOLD_THRESHOLD_SEC}s) — additional balance / strength concern.`
+          : `${sideLabel}: hold ended early at ${r.hold_seconds.toFixed(1)}s ` +
+            `(< ${SHORT_HOLD_THRESHOLD_SEC}s) — additional balance / strength concern.`,
       );
     }
     if (r.trendelenburg_gait_pattern) {

@@ -11,9 +11,17 @@
 //   - Save per-frame keypoints
 //   - Track running max-drop and capture a screenshot at the moment
 //     of max drop
-//   - Auto-terminate if the lifted foot returns to the ground OR
-//     pelvic tilt spikes past PELVIC_SPIKE_TERMINATION_DEG
-//   - End normally after TARGET_HOLD_SECONDS (30s)
+//   - The side is a fixed TARGET_HOLD_SECONDS (30 s) WINDOW that starts
+//     when the countdown ends and runs to the end no matter what.
+//   - A foot touchdown (after the wobble grace) or a pelvic-tilt spike
+//     ends the current HOLD, not the side; the patient lifts again and
+//     a new hold begins. Only the window end or Stop ends the side —
+//     and only then does the test switch legs.
+//   - The score is the longest single hold.
+//
+// It used to end the side at the first touchdown, and to complete the
+// side 30 s after the countdown even if the leg had only just been
+// lifted — so a one-second lift near the end switched legs.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -42,6 +50,7 @@ import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
 import { usePatientContext } from "@/hooks/usePatientContext";
 import {
   COMPENSATORY_TRUNK_LEAN_DEG,
+  MIN_HOLD_SEGMENT_SEC,
   PELVIC_SPIKE_TERMINATION_DEG,
   SAMPLE_INTERVAL_MS,
   TARGET_HOLD_SECONDS,
@@ -51,10 +60,12 @@ import {
   computeTrunkLean,
   detectStanceSide,
   dropForStance,
-  summarizeSide,
+  summarizeSideWindow,
   type Side,
   type TrendelenburgFrameSample,
   type TrendelenburgFullResult,
+  type TrendelenburgHold,
+  type TrendelenburgHoldEnd,
   type TrendelenburgSideResult,
 } from "@/lib/orthopedic/trendelenburg";
 
@@ -87,10 +98,6 @@ function errorMessage(e: unknown): string | null {
 // terminates as a foot-touch. Was 1s; bumped to 2s so a momentary
 // dip doesn't end the recording.
 const POST_LIFT_LOSS_GRACE_SEC = 2.0;
-// Hard ceiling on "armed but never lifted" — if the patient hasn't
-// achieved stance after this many seconds we still terminate so the
-// UI doesn't sit indefinitely.
-const PRE_LIFT_TIMEOUT_SEC = 12.0;
 
 interface RecordingState {
   side: Side;
@@ -107,6 +114,28 @@ interface RecordingState {
   /** Most recent timestamp at which `detectStanceSide` returned a
    *  non-null value (used for the post-lift loss grace window). */
   lastStanceSeenAt: number | null;
+  /** Window model: counted holds and the one in progress. */
+  segments: TrendelenburgHold[];
+  lifted: boolean;
+  segmentStartAt: number | null;
+}
+
+/** Close the hold in progress. Short flaps are dropped, not counted. */
+function closeSegment(rec: RecordingState, endMs: number, endedBy: TrendelenburgHoldEnd): void {
+  if (!rec.lifted || rec.segmentStartAt === null) return;
+  const start_s = (rec.segmentStartAt - rec.startedAt) / 1000;
+  const end_s = Math.max(start_s, (endMs - rec.startedAt) / 1000);
+  const duration_s = end_s - start_s;
+  if (duration_s >= MIN_HOLD_SEGMENT_SEC) {
+    rec.segments.push({
+      start_s: Math.round(start_s * 10) / 10,
+      end_s: Math.round(end_s * 10) / 10,
+      duration_s: Math.round(duration_s * 10) / 10,
+      ended_by: endedBy,
+    });
+  }
+  rec.lifted = false;
+  rec.segmentStartAt = null;
 }
 
 export function TrendelenburgCapture() {
@@ -164,9 +193,11 @@ export function TrendelenburgCapture() {
     return () => window.clearInterval(id);
   }, [phase]);
 
-  const finishSide = useCallback((termination: TrendelenburgSideResult["termination"]) => {
+  const finishSide = useCallback((termination: "window_end" | "stopped") => {
     const rec = recordingRef.current;
     if (!rec) return;
+    const endedAt = Date.now();
+    closeSegment(rec, endedAt, termination);
     // Fallback screenshot: if no peak-drop frame was captured during
     // the trial (e.g. drop never exceeded 0 because the test was
     // negative), grab the current frame so the report still has a
@@ -180,11 +211,12 @@ export function TrendelenburgCapture() {
         if (url) rec.peakScreenshotDataUrl = url;
       }
     }
-    const summary = summarizeSide(
+    const summary = summarizeSideWindow(
       rec.side,
       rec.startedAt,
-      Date.now(),
+      endedAt,
       termination,
+      rec.segments,
       rec.samples,
       rec.keypoints,
       rec.peakScreenshotDataUrl,
@@ -244,40 +276,45 @@ export function TrendelenburgCapture() {
     const expectedSide = rec.side;
     const expectedStr = expectedSide === "left" ? "left" : "right";
     const liftedStr   = expectedSide === "left" ? "right" : "left";
-    const elapsedSec  = (tNow - rec.startedAt) / 1000;
+    const windowSec = (tNow - rec.startedAt) / 1000;
+    const leftSec = Math.max(0, TARGET_HOLD_SECONDS - windowSec);
 
-    // Auto-terminate guards — but only AFTER stance has been achieved
-    // at least once. Before that we sit in a "waiting for lift" state
-    // and surface a coaching prompt instead of cutting the test short.
+    // The window is the only clock. Nothing below ends the side.
+    if (windowSec >= TARGET_HOLD_SECONDS) {
+      finishSide("window_end");
+      return;
+    }
+
     const detectedStance = detectStanceSide(kp);
+    const inStance = detectedStance === expectedSide;
 
-    if (detectedStance === expectedSide) {
-      // Good stance. Mark first-detection + last-detection.
-      if (rec.firstStanceAt === null) rec.firstStanceAt = tNow;
+    if (inStance) {
       rec.lastStanceSeenAt = tNow;
-    } else {
-      // Either no detection, or the wrong leg is on the ground.
-      if (rec.firstStanceAt === null) {
-        // Pre-lift: never reached stance yet. Coach the patient and
-        // give them up to PRE_LIFT_TIMEOUT_SEC before bailing.
-        if (detectedStance === null) {
-          setCoachIfChanged(`Lift your ${liftedStr} leg — keep the ${expectedStr} foot planted.`);
-        } else {
-          setCoachIfChanged(`Switch sides — please stand on the ${expectedStr} leg.`);
-        }
-        if (elapsedSec > PRE_LIFT_TIMEOUT_SEC) {
-          finishSide("foot_touch");
-        }
-        return; // don't sample / advance until the lift is detected
+      if (!rec.lifted) {
+        // A new hold begins (the first, or the next after a touchdown).
+        rec.lifted = true;
+        rec.segmentStartAt = tNow;
+        if (rec.firstStanceAt === null) rec.firstStanceAt = tNow;
+        setCoachIfChanged("Holding — keep it up.");
       }
-      // Post-lift: stance was achieved before — this is a foot wobble
-      // or full touch-down. Allow POST_LIFT_LOSS_GRACE_SEC of slack
-      // before terminating.
+    } else if (!rec.lifted) {
+      // Grounded, waiting for a lift. The window keeps running.
+      setCoachIfChanged(
+        detectedStance === null
+          ? `Lift your ${liftedStr} leg — keep the ${expectedStr} foot planted. ${leftSec.toFixed(0)} s left.`
+          : `Switch sides — please stand on the ${expectedStr} leg. ${leftSec.toFixed(0)} s left.`,
+      );
+      return;
+    } else {
+      // In a hold but stance not seen this frame: a wobble is allowed
+      // for POST_LIFT_LOSS_GRACE_SEC; longer than that is a touchdown,
+      // which ends THIS HOLD and not the side.
       const sinceLastStance = rec.lastStanceSeenAt
         ? (tNow - rec.lastStanceSeenAt) / 1000
         : 0;
       if (sinceLastStance > POST_LIFT_LOSS_GRACE_SEC) {
-        finishSide("foot_touch");
+        closeSegment(rec, rec.lastStanceSeenAt ?? tNow, "foot_touch");
+        setCoachIfChanged(`Foot touched down — lift again when you are ready. ${leftSec.toFixed(0)} s left.`);
         return;
       }
       setCoachIfChanged(
@@ -287,16 +324,22 @@ export function TrendelenburgCapture() {
       );
     }
 
+    // ── In a hold (stance, or inside the wobble grace).
     const pelvic = computePelvicTilt(kp);
     const lean = computeTrunkLean(kp);
 
     if (pelvic !== null && Math.abs(pelvic) > PELVIC_SPIKE_TERMINATION_DEG) {
-      finishSide("spike");
+      // A spike ends the hold, not the side.
+      closeSegment(rec, tNow, "spike");
+      setCoachIfChanged(`Pelvic tilt spike — level your hips and lift again. ${leftSec.toFixed(0)} s left.`);
       return;
     }
 
+    const holdStart = rec.segmentStartAt ?? tNow;
     rec.samples.push({
-      t_ms: tNow - rec.startedAt,
+      // From the start of THIS hold, so the stable-portion rule
+      // (after the first 2 s) applies to every hold.
+      t_ms: tNow - holdStart,
       pelvic_tilt_deg: pelvic,
       trunk_lean_deg: lean,
     });
@@ -321,7 +364,7 @@ export function TrendelenburgCapture() {
 
     // Live coaching while in good stance — based on the current pelvic
     // drop magnitude.
-    if (rec.firstStanceAt !== null && pelvic !== null) {
+    if (pelvic !== null) {
       const drop = dropForStance(pelvic, rec.side);
       const absLean = lean !== null ? Math.abs(lean) : 0;
       if (drop > 5) {
@@ -333,11 +376,6 @@ export function TrendelenburgCapture() {
       } else {
         setCoachIfChanged("Holding well — stay steady.");
       }
-    }
-
-    // Voluntary 30-second completion.
-    if (elapsedSec >= TARGET_HOLD_SECONDS) {
-      finishSide("completed");
     }
 
     // Avoid TS "video unused" warning — we actually only need the
@@ -499,14 +537,17 @@ export function TrendelenburgCapture() {
       peakScreenshotDataUrl: null,
       firstStanceAt: null,
       lastStanceSeenAt: null,
+      segments: [],
+      lifted: false,
+      segmentStartAt: null,
     };
     lastCoachMsgRef.current = "";
-    setCoachMsg(`Lift your ${armedSide === "left" ? "right" : "left"} leg to begin.`);
+    setCoachMsg(`Lift your ${armedSide === "left" ? "right" : "left"} leg — the ${TARGET_HOLD_SECONDS} s window is running.`);
     setPhase("recording");
   }
 
   function stopEarly() {
-    finishSide("foot_touch");
+    finishSide("stopped");
   }
 
   function reset() {
@@ -595,11 +636,18 @@ export function TrendelenburgCapture() {
   }
 
   // ── Capture view ───────────────────────────────────────────────
-  const elapsed =
-    phase === "recording" && recordingRef.current
-      ? (now - recordingRef.current.startedAt) / 1000
-      : 0;
+  // The window clock, from the moment the countdown ended.
+  const liveRec = phase === "recording" ? recordingRef.current : null;
+  const elapsed = liveRec ? Math.max(0, (now - liveRec.startedAt) / 1000) : 0;
   const remaining = Math.max(0, TARGET_HOLD_SECONDS - elapsed);
+  const currentHoldSec =
+    liveRec && liveRec.lifted && liveRec.segmentStartAt !== null
+      ? (now - liveRec.segmentStartAt) / 1000
+      : 0;
+  const longestSoFar = liveRec
+    ? Math.max(currentHoldSec, liveRec.segments.reduce((m, g) => Math.max(m, g.duration_s), 0))
+    : 0;
+  const dropsSoFar = liveRec ? liveRec.segments.filter((g) => g.ended_by !== "window_end").length : 0;
   const liveSide = recordingRef.current?.side ?? armedSide ?? null;
   const sidesRemaining: Side[] = (["left", "right"] as Side[]).filter(
     (s) => !completedSides.has(s),
@@ -774,8 +822,10 @@ export function TrendelenburgCapture() {
                 </ol>
               </div>
               <p className="text-xs text-muted">
-                Recording auto-stops if the lifted foot touches down for
-                longer than {POST_LIFT_LOSS_GRACE_SEC.toFixed(0)} s, or if
+                The {TARGET_HOLD_SECONDS} s window runs to the end. A foot touchdown
+                (longer than {POST_LIFT_LOSS_GRACE_SEC.toFixed(0)} s) or a pelvic-tilt
+                spike ends that hold, not the test — lift again to start a new
+                hold. The longest hold is scored. The old rule stopped recording if
                 pelvic tilt exceeds {PELVIC_SPIKE_TERMINATION_DEG}°.
                 Compensatory trunk lean beyond {COMPENSATORY_TRUNK_LEAN_DEG}°
                 toward the stance side will be flagged.
@@ -825,7 +875,7 @@ export function TrendelenburgCapture() {
           title="Trendelenburg Test"
           subtitle={
             phase === "recording"
-              ? `${liveSide === "left" ? "Left" : "Right"}-leg stance — hold ${TARGET_HOLD_SECONDS}s`
+              ? `${liveSide === "left" ? "Left" : "Right"}-leg stance — ${TARGET_HOLD_SECONDS}s window`
               : armedSide
                 ? `${armedSide === "left" ? "Left" : "Right"}-leg stance — get ready`
                 : "Choose the next side"
@@ -856,14 +906,12 @@ export function TrendelenburgCapture() {
                     ● Recording — {liveSide === "left" ? "Left" : "Right"} stance
                   </p>
                   <p className="tabular text-2xl font-semibold text-white">
-                    {recordingRef.current.firstStanceAt === null
-                      ? "—"
-                      : `${remaining.toFixed(1)}s`}
+                    {remaining.toFixed(0)}s
+                    <span className="ml-1 text-xs font-normal text-white/60">left</span>
                   </p>
-                  <p className="text-[10px] text-white/70">
-                    {recordingRef.current.firstStanceAt === null
-                      ? "Waiting for the leg lift"
-                      : "Hold steady"}
+                  <p className="tabular text-[10px] text-emerald-200">
+                    {recordingRef.current.lifted ? `holding ${currentHoldSec.toFixed(1)}s` : "foot down"}
+                    {" · "}best {longestSoFar.toFixed(1)}s · drops {dropsSoFar}
                   </p>
                 </div>
               )}
@@ -883,26 +931,18 @@ export function TrendelenburgCapture() {
                 <div className="rounded-card border border-border bg-surface p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-foreground">
-                      {recordingRef.current.firstStanceAt === null
-                        ? `Waiting for stance — ${liveSide === "left" ? "Left" : "Right"}-leg test`
-                        : `Recording — ${liveSide === "left" ? "Left" : "Right"}-leg stance`}
+                      Recording — {liveSide === "left" ? "Left" : "Right"}-leg stance
                     </p>
                     <p className="tabular text-2xl font-semibold text-accent">
-                      {recordingRef.current.firstStanceAt === null
-                        ? "—"
-                        : `${remaining.toFixed(1)}s`}
+                      {remaining.toFixed(1)}s
+                      <span className="ml-1 text-xs font-normal text-muted">left</span>
                     </p>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-elevated">
                     <div
                       className="h-full bg-accent transition-all"
                       style={{
-                        width: `${Math.min(
-                          100,
-                          recordingRef.current.firstStanceAt === null
-                            ? 0
-                            : (elapsed / TARGET_HOLD_SECONDS) * 100,
-                        )}%`,
+                        width: `${Math.min(100, (elapsed / TARGET_HOLD_SECONDS) * 100)}%`,
                       }}
                     />
                   </div>
@@ -941,7 +981,7 @@ export function TrendelenburgCapture() {
                 <p className="font-semibold text-foreground">Session brief</p>
                 <ol className="mt-2 list-decimal space-y-1 pl-4">
                   <li>Stand facing the camera, both hips in frame.</li>
-                  <li>Lift the opposite leg — hold {TARGET_HOLD_SECONDS}s on the stance leg.</li>
+                  <li>Lift the opposite leg and hold. The {TARGET_HOLD_SECONDS}s window runs to the end — if the foot comes down, lift again; the longest hold counts.</li>
                   <li>Auto-stops on foot touch-down or pelvic spike; then the other side.</li>
                 </ol>
               </div>
