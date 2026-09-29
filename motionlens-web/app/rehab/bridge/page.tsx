@@ -73,18 +73,25 @@ import { REHAB_EXERCISE_IMAGES } from "@/lib/rehab/exerciseImages";
 
 type Side = "left" | "right";
 
+// The signal is the HIP interior angle, shoulder–hip–knee. Lying
+// supine with knees bent and feet flat it reads ~130–140° (the thigh
+// rises ~40–50° off the floor), NOT 90° — 90° is the knee. At the top
+// of a bridge the three points line up at ~170–180°.
+//
+// The depth line used to be 115°, which a patient only reaches with
+// the feet tucked right under the hips, so on camera the down phase
+// never crossed it and no rep was ever counted. The lines now sit
+// inside the real range: down below 145°, up past 160°.
 const BRIDGE_CONFIG = {
-  // Bridge peak — interior angle near 180° (shoulder-hip-knee
-  // line). Threshold is slightly below 180 to tolerate the
-  // partial extension typical of real bridges.
-  topThreshold: 150,
-  // Bridge bottom — interior ≈ 90° at rest with knees bent.
-  // Threshold sits above 90 so a partial drop still counts as
-  // "depth reached".
-  depthThreshold: 115,
-  // Minimum excursion ~50° catches real bridges; rules out tiny
-  // pelvic wiggles.
-  minAmplitude: 50,
+  // Bridge peak — hips lifted until shoulder, hip and knee are close
+  // to a straight line.
+  topThreshold: 160,
+  // Bridge bottom — back on the floor. Rest reads ~130–140°, so
+  // lowering the hips crosses this with room to spare.
+  depthThreshold: 145,
+  // A real bridge moves ~35–45° (≈135° → ≈175°); 25° rules out small
+  // pelvic wiggles without marking every real rep as shallow.
+  minAmplitude: 25,
   maxJerk: null as number | null,
   pointsPerRep: 10,
 };
