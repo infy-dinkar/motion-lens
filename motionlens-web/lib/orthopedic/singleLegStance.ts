@@ -67,19 +67,59 @@ const ARM_GRAB_DEG = 45;
 const HOP_DISPLACEMENT_RATIO = 0.06;
 const HOP_WINDOW_MS = 500;
 
-// Pre-onset grace — give the patient a few seconds to lift the
-// leg after Start. If no lift detected within this window, end
-// the trial as "no_lift_detected".
+// Pre-onset grace — kept for the upload/backend path and for older
+// saved trials that carry a "no_lift_detected" termination. The live
+// flow no longer ends a trial for a missing lift: the window runs its
+// full length and a trial with no lift simply records zero holds.
 export const ONSET_TIMEOUT_SEC = 8;
+
+// ── Window-based live trial ──────────────────────────────────────
+//
+// The live test runs for the FULL window (60 s eyes open, 30 s eyes
+// closed). A foot touchdown, an arm grab or a hop ends the current
+// HOLD, not the trial: the patient lifts again and a new hold begins.
+// The score is the longest single hold in the window, so a patient
+// who drops the foot at 2 s and then holds for 40 s is credited with
+// 40 s — the earlier behaviour ended the trial at 2 s and never saw
+// the 40.
+
+/** A hold shorter than this is a flap around the touchdown threshold,
+ *  not a stance. Logged as an event, not counted as a hold. */
+export const MIN_HOLD_SEGMENT_SEC = 0.5;
+/** After a hold ends, the foot must read as grounded for this long
+ *  before a new lift is accepted — stops one touchdown from being
+ *  counted as several. */
+export const REARM_GROUNDED_MS = 300;
+
+export type HoldEndReason =
+  | "foot_touchdown"
+  | "arm_grab"
+  | "hop"
+  | "window_end"
+  | "stopped";
+
+export interface HoldSegment {
+  /** Seconds from the start of the window. */
+  start_s: number;
+  end_s: number;
+  duration_s: number;
+  ended_by: HoldEndReason;
+}
+
+export interface TrialEvent {
+  t_s: number;
+  kind: "lift" | HoldEndReason;
+}
 
 export type Side = "left" | "right";
 export type Condition = "eyes_open" | "eyes_closed";
 export type Termination =
-  | "max_time"          // trial ran the full max-time
-  | "foot_touchdown"    // lifted foot returned to ground
-  | "arm_grab"          // wrist abducted past 45° from vertical
-  | "hop"               // stance foot repositioned
-  | "no_lift_detected"  // patient never lifted within onset window
+  | "max_time"          // (legacy single-hold trial) ran the full max-time
+  | "foot_touchdown"    // (legacy) lifted foot returned to ground
+  | "arm_grab"          // (legacy) wrist abducted past 45° from vertical
+  | "hop"               // (legacy) stance foot repositioned
+  | "no_lift_detected"  // (legacy / upload) never lifted within onset window
+  | "window_end"        // window trial ran its full length
   | "stopped";          // operator clicked stop
 
 export type Classification = "pass" | "fail";
@@ -304,6 +344,102 @@ export interface TrialResult {
   samples: FrameSample[];
   keypoints: Array<Array<{ x: number; y: number; score?: number }>>;
   screenshot_data_url: string | null;
+
+  // ── Window-trial fields. Present on live trials recorded since the
+  //    window model shipped; absent on older saved reports and on
+  //    upload/backend trials, which the report handles.
+  /** Length of the observation window, s. */
+  window_seconds?: number;
+  /** Every counted hold, in order. */
+  hold_segments?: HoldSegment[];
+  /** Same as hold_seconds — spelled out so the meaning is explicit. */
+  longest_hold_seconds?: number;
+  /** Sum of all counted holds. */
+  total_balance_seconds?: number;
+  /** Counted holds. */
+  lift_count?: number;
+  /** Holds that ended by the foot coming down, an arm grab or a hop. */
+  touchdown_count?: number;
+  /** Seconds from window start to the first lift; null if none. */
+  time_to_first_lift_s?: number | null;
+  /** Every lift and hold-end, for the timeline. */
+  events?: TrialEvent[];
+}
+
+/**
+ * Summarise a window-based live trial.
+ *
+ * `hold_seconds` is the LONGEST hold, so everything downstream that
+ * reads it — the pass/fail norm, L–R asymmetry, the comparison view —
+ * keeps working unchanged and now scores the best hold rather than
+ * the first.
+ */
+export function summarizeWindowTrial(args: {
+  side: Side;
+  condition: Condition;
+  windowStartMs: number;
+  endedAtMs: number;
+  termination: "window_end" | "stopped";
+  segments: HoldSegment[];
+  events: TrialEvent[];
+  hipPath: Array<{ x: number; y: number }>;
+  trunkLeans: number[];
+  samples: FrameSample[];
+  keypoints: Array<Array<{ x: number; y: number; score?: number }>>;
+  screenshotDataUrl: string | null;
+  patientAge: number | null;
+}): TrialResult {
+  const {
+    side, condition, windowStartMs, endedAtMs, termination, segments, events,
+    hipPath, trunkLeans, samples, keypoints, screenshotDataUrl, patientAge,
+  } = args;
+
+  const cap = condition === "eyes_open" ? MAX_EYES_OPEN_SEC : MAX_EYES_CLOSED_SEC;
+  const longest = segments.reduce((m, g) => Math.max(m, g.duration_s), 0);
+  const total = segments.reduce((a, g) => a + g.duration_s, 0);
+  const touchdowns = segments.filter(
+    (g) => g.ended_by === "foot_touchdown" || g.ended_by === "arm_grab" || g.ended_by === "hop",
+  ).length;
+  const firstLift = events.find((e) => e.kind === "lift");
+
+  const norm = getSingleLegStanceNorm(patientAge, condition === "eyes_closed");
+  const passed = longest >= norm.passThresholdSec;
+
+  const meanLean =
+    trunkLeans.length === 0 ? 0 : trunkLeans.reduce((a, b) => a + b, 0) / trunkLeans.length;
+  const maxLean =
+    trunkLeans.length === 0 ? 0 : Math.max(...trunkLeans.map((v) => Math.abs(v)));
+
+  const round1 = (v: number) => Math.round(v * 10) / 10;
+
+  return {
+    side,
+    condition,
+    hold_seconds: round1(longest),
+    hold_capped_at: cap,
+    termination,
+    norm_threshold_sec: norm.passThresholdSec,
+    norm_band_label: norm.bandLabel,
+    norm_comparable: norm.comparable,
+    classification: passed ? "pass" : "fail",
+    sway_path_px: swayPathLength(hipPath),
+    sway_95_ellipse_px2: swayEllipse95Area(hipPath),
+    mean_trunk_lean_deg: meanLean,
+    max_trunk_lean_deg: maxLean,
+    hip_path: hipPath,
+    samples,
+    keypoints,
+    screenshot_data_url: screenshotDataUrl,
+
+    window_seconds: round1(Math.min(cap, Math.max(0, (endedAtMs - windowStartMs) / 1000))),
+    hold_segments: segments,
+    longest_hold_seconds: round1(longest),
+    total_balance_seconds: round1(total),
+    lift_count: segments.length,
+    touchdown_count: touchdowns,
+    time_to_first_lift_s: firstLift ? round1(firstLift.t_s) : null,
+    events,
+  };
 }
 
 export function summarizeTrial(args: {
@@ -424,6 +560,20 @@ export function buildInterpretation(session: SessionResult): string {
         `${label} (${cond}): held ${r.hold_seconds.toFixed(1)} s — below the ` +
         `${r.norm_band_label} threshold of ${r.norm_threshold_sec} s. Positive screen for balance impairment.`,
       );
+    }
+    if (r.hold_segments) {
+      const n = r.hold_segments.length;
+      const td = r.touchdown_count ?? 0;
+      lines.push(
+        `${label}: ${n === 0 ? "no hold" : n === 1 ? "1 hold" : `${n} holds`} in the ` +
+        `${r.window_seconds ?? r.hold_capped_at} s window` +
+        (n > 0
+          ? `; longest ${r.hold_seconds.toFixed(1)} s, ${(r.total_balance_seconds ?? 0).toFixed(1)} s on one leg in total` +
+            (td > 0 ? `, foot down ${td === 1 ? "once" : `${td} times`}.` : ".")
+          : " — no clear leg lift was detected."),
+      );
+      if (r.termination === "stopped") lines.push(`${label}: stopped by the operator before the window ended.`);
+      return;
     }
     if (r.termination !== "max_time" && r.termination !== "stopped") {
       const reason =
