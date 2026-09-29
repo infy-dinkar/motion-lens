@@ -16,6 +16,7 @@ import {
   SHORT_HOLD_THRESHOLD_SEC,
   TARGET_HOLD_SECONDS,
   dropForStance,
+  type TrendelenburgHold,
   type Side,
   type TrendelenburgFullResult,
   type TrendelenburgSideResult,
@@ -148,7 +149,26 @@ function SideColumn({
         <tbody>
           <Row label="Max pelvic drop" value={`${result.max_drop_deg.toFixed(1)}°`} />
           <Row label="Mean pelvic drop (after first 2 s)" value={`${result.mean_drop_deg.toFixed(1)}°`} />
-          <Row label="Hold duration" value={`${result.hold_seconds.toFixed(1)} s`} />
+          {result.hold_segments ? (
+            <>
+              <Row label="Window" value={`${result.window_seconds ?? TARGET_HOLD_SECONDS} s of ${TARGET_HOLD_SECONDS} s`} />
+              <Row label="Longest hold" value={`${result.hold_seconds.toFixed(1)} s`} />
+              <Row label="Total time on one leg" value={`${(result.total_stance_seconds ?? 0).toFixed(1)} s`} />
+              <Row label="Holds" value={`${result.lift_count ?? result.hold_segments.length}`} />
+              <Row label="Foot touchdowns" value={`${result.touchdown_count ?? 0}`} />
+              {(result.spike_count ?? 0) > 0 && (
+                <Row label="Pelvic-tilt spikes" value={`${result.spike_count}`} />
+              )}
+              <Row
+                label="First lift"
+                value={result.time_to_first_lift_s === null || result.time_to_first_lift_s === undefined
+                  ? "not detected"
+                  : `${result.time_to_first_lift_s.toFixed(1)} s after start`}
+              />
+            </>
+          ) : (
+            <Row label="Hold duration" value={`${result.hold_seconds.toFixed(1)} s`} />
+          )}
           <Row
             label="Max compensatory trunk lean"
             value={`${result.max_compensatory_lean_deg.toFixed(1)}°`}
@@ -156,20 +176,30 @@ function SideColumn({
           <Row
             label="Termination"
             value={
-              result.termination === "completed"
-                ? "Full hold completed"
-                : result.termination === "foot_touch"
-                  ? "Lifted foot touched down"
-                  : "Pelvic tilt spike"
+              result.termination === "window_end"
+                ? `Window complete (${TARGET_HOLD_SECONDS} s)`
+                : result.termination === "stopped"
+                  ? "Stopped early"
+                  : result.termination === "completed"
+                    ? "Full hold completed"
+                    : result.termination === "foot_touch"
+                      ? "Lifted foot touched down"
+                      : "Pelvic tilt spike"
             }
           />
         </tbody>
       </table>
 
+      {result.hold_segments && result.hold_segments.length > 0 && (
+        <HoldsTable segments={result.hold_segments} />
+      )}
+
       {(result.short_hold || result.trendelenburg_gait_pattern) && (
         <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-xs leading-relaxed text-foreground">
           {result.short_hold && (
-            <p>Hold ended early ({result.hold_seconds.toFixed(1)} s &lt; {SHORT_HOLD_THRESHOLD_SEC} s) — additional concern.</p>
+            <p>
+              {result.hold_segments ? "Longest hold only" : "Hold ended early"} ({result.hold_seconds.toFixed(1)} s &lt; {SHORT_HOLD_THRESHOLD_SEC} s) — additional concern.
+            </p>
           )}
           {result.trendelenburg_gait_pattern && (
             <p className="mt-0.5">
@@ -240,6 +270,47 @@ function SideColumn({
         </div>
       )}
     </section>
+  );
+}
+
+/** Every counted hold in the window, in order, longest starred. */
+function HoldsTable({ segments }: { segments: TrendelenburgHold[] }) {
+  const longest = segments.reduce((m, g) => Math.max(m, g.duration_s), 0);
+  const endLabel = (r: TrendelenburgHold["ended_by"]) =>
+    r === "foot_touch" ? "foot touched down"
+    : r === "spike" ? "pelvic-tilt spike"
+    : r === "window_end" ? "window ended"
+    : "stopped by operator";
+  return (
+    <div className="mt-3">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-subtle">
+        Holds in the window
+      </p>
+      <table className="w-full text-left text-xs">
+        <thead>
+          <tr className="text-subtle">
+            <th className="py-1 font-medium">#</th>
+            <th className="py-1 font-medium">From</th>
+            <th className="py-1 font-medium">To</th>
+            <th className="py-1 text-right font-medium">Held</th>
+            <th className="py-1 pl-3 font-medium">Ended by</th>
+          </tr>
+        </thead>
+        <tbody>
+          {segments.map((g, i) => (
+            <tr key={i} className="border-t border-border/50">
+              <td className="py-1 tabular text-muted">{i + 1}</td>
+              <td className="py-1 tabular">{g.start_s.toFixed(1)} s</td>
+              <td className="py-1 tabular">{g.end_s.toFixed(1)} s</td>
+              <td className={`py-1 text-right tabular ${g.duration_s === longest ? "font-semibold text-foreground" : ""}`}>
+                {g.duration_s.toFixed(1)} s{g.duration_s === longest ? " ★" : ""}
+              </td>
+              <td className="py-1 pl-3 text-muted">{endLabel(g.ended_by)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

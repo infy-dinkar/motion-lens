@@ -17,6 +17,9 @@ import {
   type SessionResult,
   type TrialResult,
   type HoldSegment,
+  type TrialEvent,
+  MIN_HOLD_SEGMENT_SEC,
+  ARM_RAISED_NOTE_SEC,
 } from "@/lib/orthopedic/singleLegStance";
 import { ReportDisclaimer } from "@/components/ui/ReportDisclaimer";
 import { PatientHeader } from "@/components/dashboard/PatientHeader";
@@ -203,6 +206,12 @@ function TrialCard({
                   ? "not detected"
                   : `${trial.time_to_first_lift_s.toFixed(1)} s after start`}
               />
+              {shortLiftCount(trial) > 0 && (
+                <Row
+                  label={`Short lifts (< ${MIN_HOLD_SEGMENT_SEC} s, not counted)`}
+                  value={`${shortLiftCount(trial)}`}
+                />
+              )}
             </>
           ) : (
             <Row label="Max hold (cap)" value={`${trial.hold_capped_at} s`} />
@@ -217,6 +226,15 @@ function TrialCard({
 
       {trial.hold_segments && trial.hold_segments.length > 0 && (
         <HoldsTable segments={trial.hold_segments} />
+      )}
+
+      {(trial.arm_raised_seconds ?? 0) >= ARM_RAISED_NOTE_SEC && (
+        <p className="rounded-md border border-warning/40 bg-warning/5 px-3 py-2 text-xs text-foreground">
+          <AlertTriangle className="mr-1 inline h-3 w-3 text-warning" />
+          An arm was raised past 45° for {trial.arm_raised_seconds!.toFixed(1)} s during
+          the holds — possible use of support. The camera cannot tell balance from
+          support; verify on the capture frame.
+        </p>
       )}
 
       {!trial.norm_comparable && (
@@ -249,6 +267,15 @@ function TrialCard({
 }
 
 /** Every counted hold in the window, in order. */
+/** Lifts that ended before MIN_HOLD_SEGMENT_SEC. They are logged as
+ *  events but not counted as holds; many of them means the lift was
+ *  being detected and lost over and over, which is worth seeing. */
+function shortLiftCount(trial: { events?: TrialEvent[]; hold_segments?: HoldSegment[] }): number {
+  if (!trial.events || !trial.hold_segments) return 0;
+  const lifts = trial.events.filter((e) => e.kind === "lift").length;
+  return Math.max(0, lifts - trial.hold_segments.length);
+}
+
 function HoldsTable({ segments }: { segments: HoldSegment[] }) {
   const longest = segments.reduce((m, g) => Math.max(m, g.duration_s), 0);
   return (

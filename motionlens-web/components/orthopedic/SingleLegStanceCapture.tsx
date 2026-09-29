@@ -56,6 +56,7 @@ import {
   MAX_EYES_OPEN_SEC,
   MIN_HOLD_SEGMENT_SEC,
   REARM_GROUNDED_MS,
+  LIFT_LOST_DEBOUNCE_MS,
   SAMPLE_INTERVAL_MS,
   analyzeSingleLegStanceUpload,
   buildInterpretation,
@@ -66,7 +67,6 @@ import {
   computeTrunkLean,
   detectStanceSide,
   isArmGrab,
-  isFootTouchdown,
   isHopInWindow,
   isLegLifted,
   summarizeWindowTrial,
@@ -130,6 +130,12 @@ interface RecordingState {
   /** When the foot last came down; a new lift is accepted only after
    *  REARM_GROUNDED_MS so one touchdown is not counted as several. */
   groundedSince: number | null;
+  /** During a hold: when the lift signal was last lost. The hold ends
+   *  only once that persists past LIFT_LOST_DEBOUNCE_MS. */
+  liftLostSince: number | null;
+  /** Time during holds with an arm raised past the grab angle. A note
+   *  for the report, never a reason to end a hold or refuse a lift. */
+  armRaisedMs: number;
 }
 
 /** Close the hold in progress. Short flaps around the touchdown
@@ -152,6 +158,7 @@ function closeSegment(rec: RecordingState, nowMs: number, endedBy: HoldEndReason
   rec.segmentStartAt = null;
   rec.groundedSince = nowMs;
   rec.stanceAnkleWindow = [];
+  rec.liftLostSince = null;
 }
 
 
@@ -228,6 +235,7 @@ export function SingleLegStanceCapture() {
       keypoints: rec.keypoints,
       screenshotDataUrl: rec.screenshot,
       patientAge: patient?.age ?? null,
+      armRaisedMs: rec.armRaisedMs,
     });
 
     const key = trialKey(rec.side, rec.condition);
@@ -264,6 +272,7 @@ export function SingleLegStanceCapture() {
     const rec = recordingRef.current;
     const tNow = Date.now();
     if (tNow - rec.lastSampleAt < SAMPLE_INTERVAL_MS) return;
+    const frameDtMs = rec.lastSampleAt ? tNow - rec.lastSampleAt : 0;
     rec.lastSampleAt = tNow;
 
     const tMs = tNow - rec.startedAt;
@@ -319,13 +328,28 @@ export function SingleLegStanceCapture() {
     // ── Lifted: track sway and lean, watch for the end of THIS hold.
     if (hipMid) rec.hipPath.push({ x: hipMid.x, y: hipMid.y });
     if (trunkLean !== null) rec.trunkLeans.push(trunkLean);
+    // Arms out is noted, not judged: the camera cannot tell balance
+    // from support. The doctor sees the seconds and the frame.
+    if (isArmGrab(kp)) rec.armRaisedMs += frameDtMs;
 
     let endedBy: HoldEndReason | null = null;
-    if (isFootTouchdown(kp, rec.side)) {
-      endedBy = "foot_touchdown";
-    } else if (isArmGrab(kp)) {
-      endedBy = "arm_grab";
+    // The hold is credited up to the moment the signal was lost, not
+    // to the end of the debounce.
+    let endedAtMs = tNow;
+
+    // Touchdown = the lift signal that started this hold is gone and
+    // stays gone for LIFT_LOST_DEBOUNCE_MS.
+    if (!liftedNow) {
+      if (rec.liftLostSince === null) rec.liftLostSince = tNow;
+      if (tNow - rec.liftLostSince >= LIFT_LOST_DEBOUNCE_MS) {
+        endedBy = "foot_touchdown";
+        endedAtMs = rec.liftLostSince;
+      }
     } else {
+      rec.liftLostSince = null;
+    }
+
+    if (endedBy === null) {
       // Hop / stance foot reposition: rolling window of stance-ankle Y.
       const stanceAnkleIdx = rec.side === "left" ? LM.LEFT_ANKLE : LM.RIGHT_ANKLE;
       const stanceAnkle = kp[stanceAnkleIdx];
@@ -343,12 +367,11 @@ export function SingleLegStanceCapture() {
 
     if (endedBy !== null) {
       // The hold ends; the window does not.
-      closeSegment(rec, tNow, endedBy);
+      closeSegment(rec, endedAtMs, endedBy);
       const why =
-        endedBy === "foot_touchdown" ? "Foot touched down"
-        : endedBy === "arm_grab" ? "Reached for support"
-        : "Stance foot moved";
-      setCoachIfChanged(`${why} — lift again when you are ready. ${(cap - tS).toFixed(0)} s left.`);
+        endedBy === "foot_touchdown" ? "Foot touched down — lift again when you are ready."
+        : "Stance foot moved — lift again when you are ready.";
+      setCoachIfChanged(`${why} ${(cap - tS).toFixed(0)} s left.`);
       return;
     }
 
@@ -531,6 +554,8 @@ export function SingleLegStanceCapture() {
       lifted: false,
       segmentStartAt: null,
       groundedSince: null,
+      liftLostSince: null,
+      armRaisedMs: 0,
     };
     lastCoachRef.current = "";
     setCoachMsg(
@@ -1006,9 +1031,9 @@ export function SingleLegStanceCapture() {
               <div className="rounded-card border border-border bg-surface p-3 text-xs text-muted">
                 <p className="font-semibold text-foreground">Session brief</p>
                 <ol className="mt-2 list-decimal space-y-1 pl-4">
-                  <li>Patient barefoot, facing the camera, full body in frame.</li>
+                  <li>Patient barefoot, facing the camera, full body in frame, arms crossed on the chest (standard protocol).</li>
                   <li>Pick a trial — 3-2-1 countdown, then the window runs for its full length. Dropping the foot ends that hold, not the trial; lift again and keep going.</li>
-                  <li>Trials end on foot touchdown, arm grab, hop, or max time.</li>
+                  <li>A hold ends on foot touchdown or a hop; the trial ends at max time or Stop. The longest hold is scored. Arms held out to the side are noted in the report, not judged.</li>
                 </ol>
               </div>
 

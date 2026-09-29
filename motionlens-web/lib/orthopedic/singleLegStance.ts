@@ -90,6 +90,20 @@ export const MIN_HOLD_SEGMENT_SEC = 0.5;
  *  before a new lift is accepted — stops one touchdown from being
  *  counted as several. */
 export const REARM_GROUNDED_MS = 300;
+/** A hold ends by touchdown when the LIFT signal (ankle or knee) has
+ *  been absent for this long. The same detector that starts a hold
+ *  ends it: the old rule ended holds on a tighter ankle-only test with
+ *  no debounce, so a lift the knee saw while the foot hung low read as
+ *  an instant touchdown, over and over, for the whole window. */
+export const LIFT_LOST_DEBOUNCE_MS = 300;
+/** Arms raised past ARM_GRAB_DEG during holds for at least this long
+ *  is worth a note in the report. It is a note, not a termination: a
+ *  2D angle cannot tell arms out for balance from a hand on a wall,
+ *  and a reach forward to a chair looks vertical to a frontal camera.
+ *  The old rule ended holds on it and, for one release, refused to
+ *  start a hold while the arms were out — a patient balancing with
+ *  the arms out scored zero for the whole window. */
+export const ARM_RAISED_NOTE_SEC = 1;
 
 export type HoldEndReason =
   | "foot_touchdown"
@@ -256,9 +270,25 @@ export function isFootTouchdown(
   return Math.abs(lifted.y - stance.y) < bodyH * FOOT_TOUCHDOWN_RATIO;
 }
 
-// Arm-grab: angle of shoulder→wrist vs vertical (image-y-down,
-// vertical = (0, +1)). > ARM_GRAB_DEG on either side = grab event.
+// Arm out: shoulder→wrist more than ARM_GRAB_DEG from vertical
+// (image-y-down, vertical = (0, +1)) AND the wrist outside the torso
+// band. The band matters because the standard protocol has the arms
+// crossed on the chest: crossed, the wrist sits at the opposite
+// shoulder and the line is nearly horizontal, so the angle alone
+// would flag the correct posture. Arms out to the side or a hand on
+// a wall put the wrist past the shoulder line; crossed arms do not.
+const ARM_OUT_BAND_RATIO = 0.25;
+
 export function isArmGrab(keypoints: Keypoint[]): boolean {
+  const lSh = keypoints[LM.LEFT_SHOULDER];
+  const rSh = keypoints[LM.RIGHT_SHOULDER];
+  let bandLo = -Infinity;
+  let bandHi = Infinity;
+  if (visible(lSh) && visible(rSh)) {
+    const sw = Math.abs(lSh.x - rSh.x);
+    bandLo = Math.min(lSh.x, rSh.x) - sw * ARM_OUT_BAND_RATIO;
+    bandHi = Math.max(lSh.x, rSh.x) + sw * ARM_OUT_BAND_RATIO;
+  }
   const sides: Array<[number, number]> = [
     [LM.LEFT_SHOULDER,  LM.LEFT_WRIST],
     [LM.RIGHT_SHOULDER, LM.RIGHT_WRIST],
@@ -267,6 +297,9 @@ export function isArmGrab(keypoints: Keypoint[]): boolean {
     const sh = keypoints[shIdx];
     const wr = keypoints[wrIdx];
     if (!visible(sh) || !visible(wr)) continue;
+    // Inside the torso band (crossed on the chest, hands together) is
+    // never "out", whatever the angle.
+    if (wr.x >= bandLo && wr.x <= bandHi) continue;
     const vx = wr.x - sh.x;
     const vy = wr.y - sh.y;
     if (Math.hypot(vx, vy) === 0) continue;
@@ -362,6 +395,9 @@ export interface TrialResult {
   touchdown_count?: number;
   /** Seconds from window start to the first lift; null if none. */
   time_to_first_lift_s?: number | null;
+  /** Seconds during holds with an arm raised past ARM_GRAB_DEG. A
+   *  note for the doctor (possible support use), never a termination. */
+  arm_raised_seconds?: number;
   /** Every lift and hold-end, for the timeline. */
   events?: TrialEvent[];
 }
@@ -388,10 +424,12 @@ export function summarizeWindowTrial(args: {
   keypoints: Array<Array<{ x: number; y: number; score?: number }>>;
   screenshotDataUrl: string | null;
   patientAge: number | null;
+  armRaisedMs?: number;
 }): TrialResult {
   const {
     side, condition, windowStartMs, endedAtMs, termination, segments, events,
     hipPath, trunkLeans, samples, keypoints, screenshotDataUrl, patientAge,
+    armRaisedMs = 0,
   } = args;
 
   const cap = condition === "eyes_open" ? MAX_EYES_OPEN_SEC : MAX_EYES_CLOSED_SEC;
@@ -438,6 +476,7 @@ export function summarizeWindowTrial(args: {
     lift_count: segments.length,
     touchdown_count: touchdowns,
     time_to_first_lift_s: firstLift ? round1(firstLift.t_s) : null,
+    arm_raised_seconds: round1(armRaisedMs / 1000),
     events,
   };
 }
@@ -572,6 +611,12 @@ export function buildInterpretation(session: SessionResult): string {
             (td > 0 ? `, foot down ${td === 1 ? "once" : `${td} times`}.` : ".")
           : " — no clear leg lift was detected."),
       );
+      if ((r.arm_raised_seconds ?? 0) >= ARM_RAISED_NOTE_SEC) {
+        lines.push(
+          `${label}: an arm was raised past ${ARM_GRAB_DEG}° for ${r.arm_raised_seconds!.toFixed(1)} s ` +
+          `during the holds — possible use of support; verify on the capture frame.`,
+        );
+      }
       if (r.termination === "stopped") lines.push(`${label}: stopped by the operator before the window ended.`);
       return;
     }
