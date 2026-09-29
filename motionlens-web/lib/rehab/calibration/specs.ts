@@ -349,7 +349,7 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
       { id: "range_left", title: "Show your range", instruction: "Bend to one side as far as is comfortable, and hold." },
       { id: "range_right", title: "And the other side", instruction: "Now bend to the other side, and hold." },
     ],
-    note: "Three holds. The signal is SIGNED (positive = anatomical right), so left and right are told apart by sign, not by order.",
+    note: "Three holds. The signal is SIGNED (positive = anatomical right), so left and right are told apart by sign, not by order: the patient may bend either way first, and the third hold is blocked until they bend to the other side.",
   },
   "pelvic-hold": {
     slug: "pelvic-hold",

@@ -15,6 +15,11 @@
 //     moves. The delta is small on purpose — it proves movement, it
 //     does not set a target.
 //
+//   • A two-sided range (side bend) must show BOTH sides. The second
+//     side hold is blocked until the reading is on the other side of
+//     rest from the first. Without this, staying bent on one side
+//     completed both holds.
+//
 //   • Nobody is locked out. A hold still incomplete after
 //     START_ANYWAY_MS offers a way through; taking it records the hold
 //     as skipped (value null) and moves on. The exercise runs either
@@ -149,6 +154,12 @@ export class CalibrationSession {
     return r && r.value !== null ? r.value : null;
   }
 
+  /** The first side of a two-sided range, once recorded, else null. */
+  private firstSideValue(): number | null {
+    const r = this.results.find((x) => x.id === "range_left");
+    return r && r.value !== null ? r.value : null;
+  }
+
   /**
    * Feed one frame. Call from the page's onFrame with the raw
    * keypoints and the video size.
@@ -172,6 +183,14 @@ export class CalibrationSession {
       const rest = this.restValue();
       if (rest !== null && Math.abs(value - rest) < MIN_RANGE_DELTA[this.spec.unit]) {
         block = "Move further — show me your range";
+      }
+      // The second side must be the other side of rest from the first.
+      if (block === null && hold.id === "range_right") {
+        const first = this.firstSideValue();
+        const base = rest ?? 0;
+        if (first !== null && Math.sign(value - base) === Math.sign(first - base)) {
+          block = "Now bend to the other side";
+        }
       }
     }
 
@@ -252,8 +271,15 @@ export class CalibrationSession {
       captured_at_ms: nowMs,
     };
     if (this.spec.holds.some((h) => h.id === "range_left")) {
-      out.range_left = get("range_left");
-      out.range_right = get("range_right");
+      // The holds are "first side" and "second side"; the patient may
+      // start with either. File them by sign (positive = anatomical
+      // right) so the report's left and right are the real sides.
+      const a = get("range_left");
+      const b = get("range_right");
+      const base = out.rest ?? 0;
+      const vals = [a, b].filter((v): v is number => v !== null);
+      out.range_left = vals.find((v) => v - base < 0) ?? null;
+      out.range_right = vals.find((v) => v - base > 0) ?? null;
     }
     return out;
   }
