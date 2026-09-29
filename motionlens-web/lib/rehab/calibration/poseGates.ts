@@ -15,6 +15,7 @@ import type { LiveKeypoint } from "@/hooks/usePoseDetectionLive";
 import { LM_LIVE as LM } from "@/lib/pose/landmarks-live";
 import type { HoldSpec } from "@/lib/rehab/calibration/specs";
 import type { Side } from "@/lib/rehab/calibration/signals";
+import { computeShoulderAngle } from "@/lib/biomech/shoulder-live";
 
 const VIS = 0.35;
 
@@ -118,7 +119,36 @@ const pelvicHold: Gate = (kp, holdId, side) => {
   return { block: null, debug };
 };
 
+// ── Bird dog ──────────────────────────────────────────────────────
+//
+// The signal is the LEG's hip angle; the arm is not measured, so a leg
+// extended with the hand still on the floor would pass. `side` is the
+// leg (what the page saves); the arm is the other side. The page's
+// own arm score peaks at 180 (arm in line with the trunk).
+/** Arm counts as reaching forward at this shoulder flexion or more. */
+const BIRD_DOG_ARM_MIN = 130;
+
+const birdDog: Gate = (kp, holdId, side) => {
+  if (side === null || holdId === "rest") return NONE;
+  const armSide: Side = side === "left" ? "right" : "left";
+  // The helper is SIGNED by facing direction (head to the image left
+  // reads -90 arm down, -180 arm forward); the size is what matters.
+  const signed = computeShoulderAngle(
+    "flexion",
+    kp as unknown as Parameters<typeof computeShoulderAngle>[1],
+    armSide,
+  );
+  const arm = signed === null ? null : Math.abs(signed);
+  const debug = `arm ${arm === null ? "—" : arm.toFixed(0)}° (need ≥ ${BIRD_DOG_ARM_MIN})`;
+  if (arm === null) return { block: null, debug };
+  if (arm < BIRD_DOG_ARM_MIN) {
+    return { block: `Reach your ${armSide.toUpperCase()} arm forward too`, debug };
+  }
+  return { block: null, debug };
+};
+
 const GATES: Record<string, Gate> = {
+  "bird-dog": birdDog,
   "external-rotation": externalRotation,
   "pelvic-hold": pelvicHold,
 };

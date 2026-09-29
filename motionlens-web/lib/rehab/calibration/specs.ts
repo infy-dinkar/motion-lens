@@ -288,9 +288,13 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
   "bird-dog": {
     slug: "bird-dog",
     view: "side", posture: "quadruped", sided: true,
-    parts: [O("SHOULDER"), W("HIP"), W("KNEE")],
+    // ANY shoulder: with the leg side nearest the camera the arm's
+    // shoulder is the far one and often faint; requiring it blocked a
+    // correctly set-up patient. The arm gate checks it when it is seen.
+    parts: [A("SHOULDER"), W("HIP"), W("KNEE")],
     scaleRef: "torso",
     signal: "hip_flexion", signalSide: "working", unit: "deg",
+    contralateral: true,
     holds: [
       rest("Hands and knees, back flat."),
       range("Extend the arm forward and the opposite leg back — and hold."),

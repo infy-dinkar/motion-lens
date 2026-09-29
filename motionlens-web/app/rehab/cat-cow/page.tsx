@@ -50,6 +50,8 @@ import {
 } from "@/components/rehab/SequenceChrome";
 import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
+import { useRehabCalibration } from "@/lib/rehab/calibration/useRehabCalibration";
+import { RehabCalibrationOverlay } from "@/components/rehab/RehabCalibrationOverlay";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { computeSpineFlexionProxyDeg } from "@/lib/rehab/poseMetrics";
 import { DEFAULT_LEVEL_INDEX } from "@/lib/rehab/progressionLadders";
@@ -137,6 +139,11 @@ export function Inner() {
   // Auto-flow: Begin → 3-2-1 countdown → live → (TARGET_REPS) →
   // complete → auto-save. Session-scoped refs reset at the live
   // transition so countdown framing noise never leaks into the tally.
+  // Two short holds before the countdown: start pose, then show your
+  // range. Records rest and range under metrics.calibration; changes
+  // nothing about how the exercise itself is scored.
+  const calibration = useRehabCalibration("cat-cow", null, phase === "active");
+
   const {
     phase: sessionPhase,
     countdown,
@@ -152,10 +159,15 @@ export function Inner() {
     setVisited({ cat: false, cow: false });
     setElapsedSec(0);
     sessionStartRef.current = performance.now();
-  }, seq.countdownSec);
+  }, seq.countdownSec, calibration);
+  // Latest calibration summary for the payload, through a ref so
+  // buildRehabPayload keeps its dependency list unchanged.
+  const calibSummaryRef = useRef(calibration.summary);
+  calibSummaryRef.current = calibration.summary;
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
+      calibration.feed(kp as unknown as LiveKeypoint[], video);
       const snap = kpToPoseSnapshot(kp, video.videoWidth, video.videoHeight);
       if (snap) lastKpRef.current = snap;
       const rawProxy = computeSpineFlexionProxyDeg(
@@ -243,6 +255,7 @@ export function Inner() {
       module: "rehab" as const,
       movement: "cat-cow",
       metrics: {
+        calibration: calibSummaryRef.current(),
         exercise_slug: "cat-cow",
         mechanic_id: "rep_count",
         started_at_ms: sessionStartRef.current,
@@ -353,6 +366,12 @@ export function Inner() {
                     </p>
                     <p className="mt-1 text-[10px] text-zinc-300">{phaseHint}</p>
                   </div>
+                  {sessionPhase === "calibrate" && calibration.state && (
+                    <RehabCalibrationOverlay
+                      state={calibration.state}
+                      onStartAnyway={calibration.startAnyway}
+                    />
+                  )}
                   {sessionPhase === "countdown" && countdown !== null && (
                     <AutoFlowCountdownOverlay countdown={countdown} />
                   )}
