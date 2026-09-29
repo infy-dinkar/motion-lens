@@ -35,10 +35,8 @@ import {
   Activity,
   ArmchairIcon,
   ArrowUpRight,
-  Award,
   Clock,
   Footprints,
-  Layers,
   Move3d,
   MoveUp,
   MoveDiagonal,
@@ -166,17 +164,6 @@ const PRODUCTS: ProductCard[] = [
     iconTone: "text-teal-500",
   },
   {
-    targetRoute: "/orthopedic/4-stage-balance",
-    eyebrow: "Balance test",
-    title: "4-Stage Balance Test.",
-    body:
-      "CDC fall-risk progression. 4 progressively harder static stances held for 10 s each, sway path + 95% ellipse per stage, classification on stage reached.",
-    gradient:
-      "linear-gradient(135deg, rgba(99,102,241,0.20) 0%, rgba(129,140,248,0.10) 50%, rgba(28,28,33,0.0) 100%)",
-    icon: Layers,
-    iconTone: "text-indigo-500",
-  },
-  {
     targetRoute: "/orthopedic/tug",
     eyebrow: "Geriatric / fall-risk",
     title: "Timed Up and Go (TUG).",
@@ -186,17 +173,6 @@ const PRODUCTS: ProductCard[] = [
       "linear-gradient(135deg, rgba(234,179,8,0.20) 0%, rgba(250,204,21,0.10) 50%, rgba(28,28,33,0.0) 100%)",
     icon: Clock,
     iconTone: "text-yellow-500",
-  },
-  {
-    targetRoute: "/orthopedic/sppb",
-    eyebrow: "Geriatric flagship · composite",
-    title: "SPPB.",
-    body:
-      "Three-test composite session: balance stages + 4 m gait speed + 5x sit-to-stand → one 0-12 score that predicts falls, hospitalisation, and disability.",
-    gradient:
-      "linear-gradient(135deg, rgba(168,85,247,0.20) 0%, rgba(192,132,252,0.10) 50%, rgba(28,28,33,0.0) 100%)",
-    icon: Award,
-    iconTone: "text-purple-500",
   },
   {
     targetRoute: "/orthopedic/slr",

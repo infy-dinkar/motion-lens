@@ -6,11 +6,9 @@ import { use as usePromise } from "react";
 import {
   ArmchairIcon,
   ArrowUpRight,
-  Award,
   Clock,
   Footprints,
   Activity,
-  Layers,
   Move3d,
   MoveUp,
   MoveDiagonal,
@@ -102,15 +100,6 @@ const MODULES = [
     iconTone: "text-teal-600",
   },
   {
-    href: "orthopedic/4-stage-balance",
-    eyebrow: "Balance test",
-    title: "4-Stage Balance Test",
-    body: "CDC fall-risk progression. 4 progressively harder static stances held for 10 s each, sway path + 95% ellipse per stage, classification on stage reached.",
-    icon: Layers,
-    tone: "from-indigo-500/15 to-indigo-500/5",
-    iconTone: "text-indigo-600",
-  },
-  {
     href: "orthopedic/tug",
     eyebrow: "Geriatric / fall-risk",
     title: "Timed Up and Go (TUG)",
@@ -118,15 +107,6 @@ const MODULES = [
     icon: Clock,
     tone: "from-yellow-500/15 to-yellow-500/5",
     iconTone: "text-yellow-600",
-  },
-  {
-    href: "orthopedic/sppb",
-    eyebrow: "Geriatric flagship · composite",
-    title: "SPPB",
-    body: "Three-test composite: balance stages + 4 m gait speed + 5x sit-to-stand. One 0-12 score predicts falls, hospitalisation, and disability.",
-    icon: Award,
-    tone: "from-purple-500/15 to-purple-500/5",
-    iconTone: "text-purple-600",
   },
   {
     href: "orthopedic/slr",
