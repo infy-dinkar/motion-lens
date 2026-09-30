@@ -22,7 +22,11 @@ import { Inner as Bridge } from "@/app/rehab/bridge/page";
 import { Inner as HeelRaises } from "@/app/rehab/heel-raises/page";
 import { Inner as SeatedSoleusRaise } from "@/app/rehab/seated-soleus-raise/page";
 import { Inner as CatCow } from "@/app/rehab/cat-cow/page";
+import { Inner as CervicalRotation } from "@/app/rehab/cervical-rotation/page";
+import { Inner as CervicalSideFlexion } from "@/app/rehab/cervical-side-flexion/page";
+import { Inner as CervicalFlexionExtension } from "@/app/rehab/cervical-flexion-extension/page";
 import { Inner as ElbowArom } from "@/app/rehab/elbow-arom/page";
+import { Inner as EccentricBicepsCurl } from "@/app/rehab/eccentric-biceps-curl/page";
 import { Inner as ExternalRotation } from "@/app/rehab/external-rotation/page";
 import { Inner as HipAbduction } from "@/app/rehab/hip-abduction/page";
 import { Inner as HipHinge } from "@/app/rehab/hip-hinge/page";
@@ -53,7 +57,11 @@ export const REHAB_EXERCISE_COMPONENTS: Record<string, RehabExerciseComponent> =
   "heel-raises": HeelRaises,
   "seated-soleus-raise": SeatedSoleusRaise,
   "cat-cow": CatCow,
+  "cervical-rotation": CervicalRotation,
+  "cervical-side-flexion": CervicalSideFlexion,
+  "cervical-flexion-extension": CervicalFlexionExtension,
   "elbow-arom": ElbowArom,
+  "eccentric-biceps-curl": EccentricBicepsCurl,
   "external-rotation": ExternalRotation,
   "hip-abduction": HipAbduction,
   "hip-hinge": HipHinge,

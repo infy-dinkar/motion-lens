@@ -13,6 +13,7 @@ import type { LiveKeypoint } from "@/hooks/usePoseDetectionLive";
 import { computeKneeAngle } from "@/lib/biomech/knee-live";
 import { computeHipAngle } from "@/lib/biomech/hip-live";
 import { computeShoulderAngle } from "@/lib/biomech/shoulder-live";
+import { computeNeckAngle } from "@/lib/biomech/neck-live";
 import {
   computeForearmRotationProxyDeg,
   computeForwardHeadOffsetDeg,
@@ -89,6 +90,16 @@ export function readCalibSignal(
         const a = computeElbowInteriorDeg(kp, sd);
         return a === null ? null : 180 - a;
       });
+    case "neck_lateral_flexion": {
+      const v = computeNeckAngle("lateral_flexion", k as Parameters<typeof computeNeckAngle>[1]);
+      return v === null ? null : Math.abs(v);
+    }
+    case "neck_flex_ext": {
+      const v = computeNeckAngle("flexion_extension", k as Parameters<typeof computeNeckAngle>[1]);
+      return v === null ? null : Math.abs(v);
+    }
+    case "neck_rotation":
+      return computeNeckAngle("rotation", k as Parameters<typeof computeNeckAngle>[1]);
     case "heel_lift":
       return computeHeelLiftDeg(kp);
     case "hip_interior":

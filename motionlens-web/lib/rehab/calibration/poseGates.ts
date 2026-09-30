@@ -280,8 +280,56 @@ const elbowArom: Gate = (kp, holdId, side) => {
   return { block: null, debug };
 };
 
+// ── Cervical side flexion ─────────────────────────────────────────
+//
+// Shrugging one shoulder up tilts the shoulder→ear line too. The
+// shoulders must stay level on the range hold. Facing the camera the
+// right shoulder is on the image left, so a level line reads ~180°
+// from +x: fold it to the smaller angle from horizontal.
+const SHOULDERS_LEVEL_MAX = 10;
+
+const cervicalSideFlex: Gate = (kp, holdId) => {
+  if (holdId !== "range") return NONE;
+  if (!ok(kp, LM.LEFT_SHOULDER) || !ok(kp, LM.RIGHT_SHOULDER)) return NONE;
+  const dx = kp[LM.RIGHT_SHOULDER].x - kp[LM.LEFT_SHOULDER].x;
+  const dy = kp[LM.RIGHT_SHOULDER].y - kp[LM.LEFT_SHOULDER].y;
+  if (Math.hypot(dx, dy) < 1) return NONE;
+  const a = Math.abs((Math.atan2(dy, dx) * 180) / Math.PI);
+  const tilt = Math.min(a, 180 - a);
+  const debug = `shoulder line ${tilt.toFixed(0)}° (max ${SHOULDERS_LEVEL_MAX})`;
+  if (tilt > SHOULDERS_LEVEL_MAX) {
+    return { block: "Keep your shoulders level — tilt only your head", debug };
+  }
+  return { block: null, debug };
+};
+
+// ── Cervical flexion / extension ──────────────────────────────────
+//
+// Leaning the whole trunk forward tips the head too. The trunk (hip →
+// shoulder) must stay within TRUNK_UPRIGHT_MAX of vertical on the range
+// hold; a chair back allows some recline.
+const TRUNK_UPRIGHT_MAX = 20;
+
+const cervicalFlexExt: Gate = (kp, holdId) => {
+  if (holdId !== "range") return NONE;
+  const sh = mid(kp, LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER);
+  const hp = mid(kp, LM.LEFT_HIP, LM.RIGHT_HIP);
+  if (!sh || !hp) return NONE;
+  const dx = sh.x - hp.x, dy = sh.y - hp.y;
+  if (Math.hypot(dx, dy) < 1) return NONE;
+  const lean = Math.abs((Math.atan2(dx, -dy) * 180) / Math.PI);
+  const debug = `trunk ${lean.toFixed(0)}° from vertical (max ${TRUNK_UPRIGHT_MAX})`;
+  if (lean > TRUNK_UPRIGHT_MAX) {
+    return { block: "Keep your back still — move only your head", debug };
+  }
+  return { block: null, debug };
+};
+
 const GATES: Record<string, Gate> = {
+  "cervical-flexion-extension": cervicalFlexExt,
+  "cervical-side-flexion": cervicalSideFlex,
   "elbow-arom": elbowArom,
+  "eccentric-biceps-curl": elbowArom,
   "standing-hamstring-curl": hamstringCurl,
   "hip-hinge": both(sideGate, trunkGate("forward")),
   "posture-hold": sideGate,

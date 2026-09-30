@@ -12,6 +12,7 @@
 // coordinated update across four files.
 
 import {
+  Activity,
   Dumbbell,
   Footprints,
   Music,
@@ -21,7 +22,7 @@ import {
   Timer,
 } from "lucide-react";
 
-/** @typedef {"knee" | "hip" | "back" | "shoulder" | "elbow" | "ankle"} RehabJoint */
+/** @typedef {"knee" | "hip" | "back" | "shoulder" | "elbow" | "ankle" | "cervical"} RehabJoint */
 /** @typedef {"rep_count" | "hold_in_zone" | "target_reach" | "trace" | "weight_shift" | "match_pose" | "metronome"} MechanicId */
 
 /**
@@ -438,6 +439,22 @@ export const REHAB_EXERCISES = [
     tone: "from-indigo-500/15 to-indigo-500/5",
   },
   {
+    slug: "eccentric-biceps-curl",
+    issues: ["S8"],
+    code: "S7",
+    joint: "shoulder",
+    title: "Eccentric Biceps Curl",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Upper arm by the side, bend the elbow, then lower the hand slowly — at least 2 seconds — until the arm is straight. A light weight is optional. Rep-Count on the elbow angle with a lowering-time rule, side-on camera. Counts slow reps.",
+    patientBody:
+      "Slow-lowering biceps curls. Counts slow reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },
+  {
     slug: "scapular-set",
     issues: ["C1", "C2", "C3", "S1", "S4", "S6", "S9"],
     code: "S6",
@@ -499,10 +516,55 @@ export const REHAB_EXERCISES = [
     iconTone: "text-amber-500",
     tone: "from-amber-500/15 to-amber-500/5",
   },
+  {
+    slug: "cervical-rotation",
+    issues: ["C1", "C2", "C4", "C6"],
+    code: "C1",
+    joint: "cervical",
+    title: "Cervical Rotation",
+    mechanic: "rep_count",
+    publicBody:
+      "Seated facing the camera, turn the head to each side and back to centre. Rep-Count on head rotation (ear-width foreshortening against a facing-forward baseline). Counts reps, both sides.",
+    patientBody:
+      "Head turns side to side. Counts reps.",
+    icon: Activity,
+    iconTone: "text-sky-500",
+    tone: "from-sky-500/15 to-sky-500/5",
+  },
+  {
+    slug: "cervical-side-flexion",
+    issues: ["C1", "C2", "C4", "C6"],
+    code: "C2",
+    joint: "cervical",
+    title: "Cervical Side Flexion",
+    mechanic: "rep_count",
+    publicBody:
+      "Seated facing the camera, tilt the head to bring each ear toward its shoulder and back upright, shoulders level. Rep-Count on the shoulder→ear line against the patient's own upright reading. Counts reps, both sides.",
+    patientBody:
+      "Ear-to-shoulder head tilts. Counts reps.",
+    icon: Activity,
+    iconTone: "text-sky-500",
+    tone: "from-sky-500/15 to-sky-500/5",
+  },
+  {
+    slug: "cervical-flexion-extension",
+    issues: ["C1", "C2", "C4", "C6"],
+    code: "C3",
+    joint: "cervical",
+    title: "Cervical Flexion / Extension",
+    mechanic: "rep_count",
+    publicBody:
+      "Seated side-on, nod the chin down to the chest and tip the head back to look up, returning to neutral each time, back still. Rep-Count on head pitch (ear→nose line) against the patient's own neutral. Counts reps, both directions.",
+    patientBody:
+      "Chin-down and look-up nods. Counts reps.",
+    icon: Activity,
+    iconTone: "text-sky-500",
+    tone: "from-sky-500/15 to-sky-500/5",
+  },
 ];
 
 /** Order in which joint sections render on the catalogue pages. */
-export const JOINT_ORDER = ["knee", "hip", "back", "shoulder", "elbow", "ankle"];
+export const JOINT_ORDER = ["knee", "hip", "back", "shoulder", "elbow", "ankle", "cervical"];
 
 /** Display labels + brief clinical subtitles for the four groups. */
 export const JOINT_META = {
@@ -512,6 +574,7 @@ export const JOINT_META = {
   shoulder: { label: "Shoulder", subtitle: "Elevation, reach, rotation, and scapular control." },
   elbow:    { label: "Elbow", subtitle: "Elbow range of motion and arm strength." },
   ankle:    { label: "Ankle & Foot", subtitle: "Calf strength, ankle control, and balance." },
+  cervical: { label: "Cervical", subtitle: "Neck range of motion and posture." },
 };
 
 /**
@@ -521,7 +584,7 @@ export const JOINT_META = {
  */
 export function groupExercisesByJoint(exercises = visibleExercises()) {
   /** @type {Record<RehabJoint, RehabExerciseEntry[]>} */
-  const byJoint = { knee: [], hip: [], back: [], shoulder: [], elbow: [], ankle: [] };
+  const byJoint = { knee: [], hip: [], back: [], shoulder: [], elbow: [], ankle: [], cervical: [] };
   for (const ex of exercises) byJoint[ex.joint]?.push(ex);
   return JOINT_ORDER.map((joint) => ({
     joint: /** @type {RehabJoint} */ (joint),

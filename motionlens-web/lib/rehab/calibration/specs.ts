@@ -84,6 +84,12 @@ export type CalibSignal =
   | "heel_lift"
   /** 180 − elbow interior angle: 0 straight, up as the elbow bends. */
   | "elbow_flexion"
+  /** Head rotation, unsigned (neck-live computeNeckAngle "rotation"). */
+  | "neck_rotation"
+  /** Head side tilt, unsigned (neck-live computeNeckAngle "lateral_flexion"). */
+  | "neck_lateral_flexion"
+  /** Head pitch, unsigned (neck-live computeNeckAngle "flexion_extension"). */
+  | "neck_flex_ext"
   | "hip_abduction"
   | "shoulder_abduction"
   | "shoulder_flexion"
@@ -238,6 +244,63 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
       range("Bend your elbow, bringing your hand toward your shoulder, and hold."),
     ],
     note: "A pose gate keeps the upper arm down, so lifting the shoulder does not pass as elbow flexion.",
+  },
+  "eccentric-biceps-curl": {
+    slug: "eccentric-biceps-curl",
+    view: "side", posture: "seated", sided: true,
+    parts: [W("SHOULDER"), W("ELBOW"), W("WRIST")],
+    scaleRef: "torso",
+    signal: "elbow_flexion", signalSide: "working", unit: "deg",
+    contralateral: true,
+    rangeDirection: "higher",
+    wrongWayMessage: "Bend your elbow, bringing your hand toward your shoulder",
+    holds: [
+      rest("Sit tall, arm straight down by your side."),
+      range("Bend your elbow, bringing your hand toward your shoulder, and hold."),
+    ],
+    note: "Same calibration and upper-arm gate as elbow-arom; the page adds the slow-lowering rule.",
+  },
+  "cervical-rotation": {
+    slug: "cervical-rotation",
+    view: "frontal", posture: "seated", sided: false,
+    parts: [{ part: "NOSE", side: "any" }, B("EAR"), B("SHOULDER")],
+    scaleRef: "shoulderWidth",
+    signal: "neck_rotation", signalSide: "none", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Turn your head to one side",
+    holds: [
+      rest("Sit tall, facing the camera, looking straight ahead."),
+      range("Turn your head to one side as far as is comfortable, and hold."),
+    ],
+    note: "Calibration reads the unsigned nose-offset rotation; the page counts reps on the baseline-corrected rotation captured at go-live.",
+  },
+  "cervical-side-flexion": {
+    slug: "cervical-side-flexion",
+    view: "frontal", posture: "seated", sided: false,
+    parts: [B("EAR"), B("SHOULDER")],
+    scaleRef: "shoulderWidth",
+    signal: "neck_lateral_flexion", signalSide: "none", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Tilt your ear toward your shoulder",
+    holds: [
+      rest("Sit tall, facing the camera, head upright."),
+      range("Tilt your ear toward your shoulder as far as is comfortable, and hold."),
+    ],
+    note: "A pose gate keeps the shoulders level, so a shrug does not pass as a head tilt.",
+  },
+  "cervical-flexion-extension": {
+    slug: "cervical-flexion-extension",
+    view: "side", posture: "seated", sided: false,
+    parts: [{ part: "NOSE", side: "any" }, A("EAR"), A("SHOULDER"), A("HIP")],
+    scaleRef: "torso",
+    signal: "neck_flex_ext", signalSide: "none", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Nod your chin down toward your chest",
+    holds: [
+      rest("Sit tall, side-on to the camera, looking straight ahead."),
+      range("Nod your chin down toward your chest, and hold."),
+    ],
+    note: "A pose gate keeps the trunk upright, so leaning the whole body does not pass as a nod.",
   },
   "standing-hamstring-curl": {
     slug: "standing-hamstring-curl",
