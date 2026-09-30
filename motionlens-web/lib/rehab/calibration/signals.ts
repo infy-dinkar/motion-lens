@@ -16,6 +16,8 @@ import { computeShoulderAngle } from "@/lib/biomech/shoulder-live";
 import {
   computeForearmRotationProxyDeg,
   computeForwardHeadOffsetDeg,
+  computeHeelLiftDeg,
+  computeElbowInteriorDeg,
   computeHipAbductionDeg,
   computeHipMidX,
   computeHipWidth,
@@ -82,6 +84,13 @@ export function readCalibSignal(
       return sided((sd) => computeKneeAngle("flexion", k, sd));
     case "hip_flexion":
       return sided((sd) => computeHipAngle("flexion", k, sd));
+    case "elbow_flexion":
+      return sided((sd) => {
+        const a = computeElbowInteriorDeg(kp, sd);
+        return a === null ? null : 180 - a;
+      });
+    case "heel_lift":
+      return computeHeelLiftDeg(kp);
     case "hip_interior":
       return sided((sd) => {
         const f = computeHipAngle("flexion", k, sd);

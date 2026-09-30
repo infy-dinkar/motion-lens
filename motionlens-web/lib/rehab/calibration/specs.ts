@@ -43,7 +43,9 @@ export type BodyPart =
   | "WRIST"
   | "HIP"
   | "KNEE"
-  | "ANKLE";
+  | "ANKLE"
+  | "HEEL"
+  | "FOOT_INDEX";
 
 /**
  * Which side of the body a required part is on.
@@ -78,6 +80,10 @@ export type CalibSignal =
    *  scores and reports, so its calibration card reads in the same
    *  numbers as its clinical metric. */
   | "hip_interior"
+  /** Foot pitch side-on (computeHeelLiftDeg): up as the heel lifts. */
+  | "heel_lift"
+  /** 180 − elbow interior angle: 0 straight, up as the elbow bends. */
+  | "elbow_flexion"
   | "hip_abduction"
   | "shoulder_abduction"
   | "shoulder_flexion"
@@ -189,6 +195,63 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     scaleRef: "thigh",
     signal: "knee_flexion", signalSide: "working", unit: "deg",
     holds: [rest("Stand tall."), range("Bend your knees into a shallow squat, and hold.")],
+  },
+  "heel-raises": {
+    slug: "heel-raises",
+    view: "side", posture: "standing", sided: false,
+    parts: [A("HIP"), A("KNEE"), A("ANKLE"), A("HEEL"), A("FOOT_INDEX")],
+    scaleRef: "thigh",
+    signal: "heel_lift", signalSide: "none", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Rise up onto your toes",
+    holds: [
+      rest("Stand tall holding a chair, feet flat."),
+      range("Rise up onto your toes, and hold."),
+    ],
+    note: "Rest is the patient's flat-foot pitch; the page counts reps against it, so camera height and foot shape drop out.",
+  },
+  "seated-soleus-raise": {
+    slug: "seated-soleus-raise",
+    view: "side", posture: "seated", sided: false,
+    parts: [A("KNEE"), A("ANKLE"), A("HEEL"), A("FOOT_INDEX")],
+    scaleRef: "thigh",
+    signal: "heel_lift", signalSide: "none", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Lift your heels, toes staying down",
+    holds: [
+      rest("Sit with knees bent and feet flat."),
+      range("Lift both heels as high as you can, and hold."),
+    ],
+    note: "Same signal as heel-raises; seated, so the hip is not required.",
+  },
+  "elbow-arom": {
+    slug: "elbow-arom",
+    view: "side", posture: "seated", sided: true,
+    parts: [W("SHOULDER"), W("ELBOW"), W("WRIST")],
+    scaleRef: "torso",
+    signal: "elbow_flexion", signalSide: "working", unit: "deg",
+    contralateral: true,
+    rangeDirection: "higher",
+    wrongWayMessage: "Bend your elbow, bringing your hand toward your shoulder",
+    holds: [
+      rest("Sit tall, arm straight down by your side."),
+      range("Bend your elbow, bringing your hand toward your shoulder, and hold."),
+    ],
+    note: "A pose gate keeps the upper arm down, so lifting the shoulder does not pass as elbow flexion.",
+  },
+  "standing-hamstring-curl": {
+    slug: "standing-hamstring-curl",
+    view: "side", posture: "standing", sided: true,
+    parts: [W("HIP"), W("KNEE"), W("ANKLE")],
+    scaleRef: "thigh",
+    signal: "knee_flexion", signalSide: "working", unit: "deg",
+    // Only the working knee should bend; the other leg is the one standing.
+    contralateral: true,
+    holds: [
+      rest("Stand tall holding a chair, test leg straight."),
+      range("Curl your heel up toward your buttock, and hold."),
+    ],
+    note: "A pose gate keeps the thigh pointing down, so a squat or a hip lift does not pass as a curl.",
   },
   "single-leg-squat": {
     slug: "single-leg-squat",

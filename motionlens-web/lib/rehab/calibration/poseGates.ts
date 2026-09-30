@@ -232,7 +232,57 @@ function both(a: Gate, b: Gate): Gate {
   };
 }
 
+// ── Standing hamstring curl ───────────────────────────────────────
+//
+// The signal is the knee angle, and a squat or a knee lifted forward
+// bends the knee too. In a hamstring curl the thigh stays pointing
+// down: on the range hold, the hip→knee line must stay within
+// THIGH_DOWN_MAX of vertical.
+const THIGH_DOWN_MAX = 30;
+
+const hamstringCurl: Gate = (kp, holdId, side) => {
+  if (side === null || holdId !== "range") return NONE;
+  const H = side === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP;
+  const K = side === "left" ? LM.LEFT_KNEE : LM.RIGHT_KNEE;
+  if (!ok(kp, H) || !ok(kp, K)) return NONE;
+  const dx = kp[K].x - kp[H].x;
+  const dy = kp[K].y - kp[H].y;
+  if (Math.hypot(dx, dy) < 1) return NONE;
+  // 0 = thigh straight down (knee below hip), grows as the thigh swings.
+  const thigh = Math.abs((Math.atan2(dx, dy) * 180) / Math.PI);
+  const debug = `thigh ${thigh.toFixed(0)}° from vertical (max ${THIGH_DOWN_MAX})`;
+  if (thigh > THIGH_DOWN_MAX) {
+    return { block: "Keep your thigh pointing down — bend only the knee", debug };
+  }
+  return { block: null, debug };
+};
+
+// ── Elbow AROM ─────────────────────────────────────────────────────
+//
+// Raising the whole arm also changes the elbow angle on screen. The
+// upper arm must hang by the side: the shoulder→elbow line stays within
+// UPPER_ARM_DOWN_MAX of vertical on the range hold.
+const UPPER_ARM_DOWN_MAX = 35;
+
+const elbowArom: Gate = (kp, holdId, side) => {
+  if (side === null || holdId !== "range") return NONE;
+  const S = side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER;
+  const E = side === "left" ? LM.LEFT_ELBOW : LM.RIGHT_ELBOW;
+  if (!ok(kp, S) || !ok(kp, E)) return NONE;
+  const dx = kp[E].x - kp[S].x;
+  const dy = kp[E].y - kp[S].y;
+  if (Math.hypot(dx, dy) < 1) return NONE;
+  const upper = Math.abs((Math.atan2(dx, dy) * 180) / Math.PI);
+  const debug = `upper arm ${upper.toFixed(0)}° from vertical (max ${UPPER_ARM_DOWN_MAX})`;
+  if (upper > UPPER_ARM_DOWN_MAX) {
+    return { block: "Keep your upper arm by your side — bend only the elbow", debug };
+  }
+  return { block: null, debug };
+};
+
 const GATES: Record<string, Gate> = {
+  "elbow-arom": elbowArom,
+  "standing-hamstring-curl": hamstringCurl,
   "hip-hinge": both(sideGate, trunkGate("forward")),
   "posture-hold": sideGate,
   "back-extension": trunkGate("backward"),

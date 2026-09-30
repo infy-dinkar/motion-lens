@@ -162,7 +162,9 @@ function inFrame(kp: LiveKeypoint[], i: number, f: FrameSize): boolean {
 }
 
 function humanPart(part: BodyPart): string {
-  return part === "NOSE" ? "head" : part.toLowerCase();
+  if (part === "NOSE") return "head";
+  if (part === "FOOT_INDEX") return "toes";
+  return part.toLowerCase();
 }
 
 function listParts(parts: BodyPart[]): string {

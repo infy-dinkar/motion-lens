@@ -483,3 +483,51 @@ export function computeHipAbductionDeg(
   // thigh swings.
   return (Math.atan2(Math.abs(dx), Math.abs(dy)) * 180) / Math.PI;
 }
+
+/** Foot pitch in degrees, seen side-on: the heel→toe line's angle
+ *  above horizontal. ~0–10° with the foot flat (depends on camera
+ *  height and foot shape), rising as the heel lifts onto the toes.
+ *  Positive = heel above the toe. Reads the foot whose heel and toe
+ *  are seen more clearly — side-on, the far foot is mostly hidden.
+ *  Null when neither foot is visible. Used by the heel-raise family. */
+export function computeHeelLiftDeg(keypoints: Keypoint[]): number | null {
+  const feet: Array<[number, number]> = [
+    [LM.LEFT_HEEL, LM.LEFT_FOOT_INDEX],
+    [LM.RIGHT_HEEL, LM.RIGHT_FOOT_INDEX],
+  ];
+  let best: { heel: Keypoint; toe: Keypoint; score: number } | null = null;
+  for (const [h, t] of feet) {
+    const heel = keypoints[h];
+    const toe = keypoints[t];
+    if (!heel || !toe) continue;
+    const sc = Math.min(heel.score ?? 0, toe.score ?? 0);
+    if (sc < VIS_THRESHOLD) continue;
+    if (!best || sc > best.score) best = { heel, toe, score: sc };
+  }
+  if (!best) return null;
+  const dx = Math.abs(best.toe.x - best.heel.x);
+  const dy = best.toe.y - best.heel.y; // image y is down: heel above toe → dy > 0
+  if (Math.hypot(dx, dy) < 1e-4) return null;
+  return (Math.atan2(dy, dx) * 180) / Math.PI;
+}
+
+/** Elbow interior angle in degrees (shoulder–elbow–wrist), unsigned:
+ *  ~170–180° with the arm straight, ~40–50° fully bent. Null when any
+ *  of the three landmarks is not seen. Used by the elbow exercises. */
+export function computeElbowInteriorDeg(
+  keypoints: Keypoint[],
+  side: "left" | "right",
+): number | null {
+  const s = keypoints[side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER];
+  const e = keypoints[side === "left" ? LM.LEFT_ELBOW : LM.RIGHT_ELBOW];
+  const w = keypoints[side === "left" ? LM.LEFT_WRIST : LM.RIGHT_WRIST];
+  for (const k of [s, e, w]) {
+    if (!k || (k.score ?? 0) < VIS_THRESHOLD) return null;
+  }
+  const ax = s.x - e.x, ay = s.y - e.y;
+  const bx = w.x - e.x, by = w.y - e.y;
+  const la = Math.hypot(ax, ay), lb = Math.hypot(bx, by);
+  if (la < 1e-4 || lb < 1e-4) return null;
+  const cos = Math.max(-1, Math.min(1, (ax * bx + ay * by) / (la * lb)));
+  return (Math.acos(cos) * 180) / Math.PI;
+}

@@ -19,7 +19,10 @@
 import { Inner as BackExtension } from "@/app/rehab/back-extension/page";
 import { Inner as BirdDog } from "@/app/rehab/bird-dog/page";
 import { Inner as Bridge } from "@/app/rehab/bridge/page";
+import { Inner as HeelRaises } from "@/app/rehab/heel-raises/page";
+import { Inner as SeatedSoleusRaise } from "@/app/rehab/seated-soleus-raise/page";
 import { Inner as CatCow } from "@/app/rehab/cat-cow/page";
+import { Inner as ElbowArom } from "@/app/rehab/elbow-arom/page";
 import { Inner as ExternalRotation } from "@/app/rehab/external-rotation/page";
 import { Inner as HipAbduction } from "@/app/rehab/hip-abduction/page";
 import { Inner as HipHinge } from "@/app/rehab/hip-hinge/page";
@@ -33,6 +36,7 @@ import { Inner as ScapularSet } from "@/app/rehab/scapular-set/page";
 import { Inner as ShoulderRaise } from "@/app/rehab/shoulder-raise/page";
 import { Inner as SideBend } from "@/app/rehab/side-bend/page";
 import { Inner as SingleLegSquat } from "@/app/rehab/single-leg-squat/page";
+import { Inner as StandingHamstringCurl } from "@/app/rehab/standing-hamstring-curl/page";
 import { Inner as Squat } from "@/app/rehab/squat/page";
 import { Inner as StepUp } from "@/app/rehab/step-up/page";
 import { Inner as WallClock } from "@/app/rehab/wall-clock/page";
@@ -46,7 +50,10 @@ export const REHAB_EXERCISE_COMPONENTS: Record<string, RehabExerciseComponent> =
   "back-extension": BackExtension,
   "bird-dog": BirdDog,
   "bridge": Bridge,
+  "heel-raises": HeelRaises,
+  "seated-soleus-raise": SeatedSoleusRaise,
   "cat-cow": CatCow,
+  "elbow-arom": ElbowArom,
   "external-rotation": ExternalRotation,
   "hip-abduction": HipAbduction,
   "hip-hinge": HipHinge,
@@ -60,6 +67,7 @@ export const REHAB_EXERCISE_COMPONENTS: Record<string, RehabExerciseComponent> =
   "shoulder-raise": ShoulderRaise,
   "side-bend": SideBend,
   "single-leg-squat": SingleLegSquat,
+  "standing-hamstring-curl": StandingHamstringCurl,
   "squat": Squat,
   "step-up": StepUp,
   "wall-clock": WallClock,

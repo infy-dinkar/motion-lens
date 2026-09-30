@@ -21,7 +21,7 @@ import {
   Timer,
 } from "lucide-react";
 
-/** @typedef {"knee" | "hip" | "back" | "shoulder"} RehabJoint */
+/** @typedef {"knee" | "hip" | "back" | "shoulder" | "elbow" | "ankle"} RehabJoint */
 /** @typedef {"rep_count" | "hold_in_zone" | "target_reach" | "trace" | "weight_shift" | "match_pose" | "metronome"} MechanicId */
 
 /**
@@ -160,6 +160,22 @@ export const REHAB_EXERCISES = [
       "Unipedal squat — patient stands on the working leg, performs a controlled descent, returns to standing. Reduced amplitude vs the bilateral squat, fewer reps, higher points per rep. Rep-Count mechanic.",
     patientBody:
       "Single-leg squat rep counter. Rep-Count mechanic.",
+    icon: Dumbbell,
+    iconTone: "text-indigo-500",
+    tone: "from-indigo-500/15 to-indigo-500/5",
+  },
+  {
+    slug: "standing-hamstring-curl",
+    issues: ["K3", "K4", "K5"],
+    code: "K7",
+    joint: "knee",
+    title: "Standing Hamstring Curl",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Standing, holding a chair, curl the heel toward the buttock and lower it — only the knee bends. Rep-Count on the knee angle, side-on camera. Counts reps.",
+    patientBody:
+      "Heel-to-buttock curls while standing. Counts reps.",
     icon: Dumbbell,
     iconTone: "text-indigo-500",
     tone: "from-indigo-500/15 to-indigo-500/5",
@@ -437,10 +453,56 @@ export const REHAB_EXERCISES = [
     iconTone: "text-indigo-500",
     tone: "from-indigo-500/15 to-indigo-500/5",
   },
+  {
+    slug: "heel-raises",
+    issues: ["A1", "A2", "A3", "A4", "A5", "A6", "A9", "K1", "K3", "K9"],
+    code: "A1",
+    joint: "ankle",
+    title: "Heel Raises",
+    mechanic: "rep_count",
+    publicBody:
+      "Standing, holding a chair, rise onto the toes and lower the heels. Both feet together. Rep-Count on the foot's pitch against the patient's own flat foot, side-on camera. Counts reps.",
+    patientBody:
+      "Calf raises on both feet. Counts reps.",
+    icon: Footprints,
+    iconTone: "text-emerald-500",
+    tone: "from-emerald-500/15 to-emerald-500/5",
+  },
+  {
+    slug: "seated-soleus-raise",
+    issues: ["A2", "A9"],
+    code: "A2",
+    joint: "ankle",
+    title: "Seated Soleus Raise",
+    mechanic: "rep_count",
+    publicBody:
+      "Seated, knees bent ~90°, lift both heels and lower them — the bent knee slackens the gastrocnemius so the soleus works. Same foot-pitch Rep-Count as Heel Raises, side-on camera. Counts reps.",
+    patientBody:
+      "Seated heel lifts for the soleus. Counts reps.",
+    icon: Footprints,
+    iconTone: "text-emerald-500",
+    tone: "from-emerald-500/15 to-emerald-500/5",
+  },
+  {
+    slug: "elbow-arom",
+    issues: ["E3", "E4", "E7"],
+    code: "E1",
+    joint: "elbow",
+    title: "Elbow AROM",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Upper arm by the side, bend the elbow to bring the hand toward the shoulder, then straighten it fully. Rep-Count on the elbow angle, side-on camera. Counts reps.",
+    patientBody:
+      "Elbow bend-and-straighten. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },
 ];
 
 /** Order in which joint sections render on the catalogue pages. */
-export const JOINT_ORDER = ["knee", "hip", "back", "shoulder"];
+export const JOINT_ORDER = ["knee", "hip", "back", "shoulder", "elbow", "ankle"];
 
 /** Display labels + brief clinical subtitles for the four groups. */
 export const JOINT_META = {
@@ -448,6 +510,8 @@ export const JOINT_META = {
   hip:      { label: "Hip",      subtitle: "Abduction, bridging, balance, and gait rhythm." },
   back:     { label: "Back",     subtitle: "Posture, extension, mobility, and core stability." },
   shoulder: { label: "Shoulder", subtitle: "Elevation, reach, rotation, and scapular control." },
+  elbow:    { label: "Elbow", subtitle: "Elbow range of motion and arm strength." },
+  ankle:    { label: "Ankle & Foot", subtitle: "Calf strength, ankle control, and balance." },
 };
 
 /**
@@ -457,7 +521,7 @@ export const JOINT_META = {
  */
 export function groupExercisesByJoint(exercises = visibleExercises()) {
   /** @type {Record<RehabJoint, RehabExerciseEntry[]>} */
-  const byJoint = { knee: [], hip: [], back: [], shoulder: [] };
+  const byJoint = { knee: [], hip: [], back: [], shoulder: [], elbow: [], ankle: [] };
   for (const ex of exercises) byJoint[ex.joint]?.push(ex);
   return JOINT_ORDER.map((joint) => ({
     joint: /** @type {RehabJoint} */ (joint),
