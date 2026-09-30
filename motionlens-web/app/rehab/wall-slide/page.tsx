@@ -42,6 +42,8 @@ import {
 } from "@/components/rehab/SequenceChrome";
 import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
+import { useRehabCalibration } from "@/lib/rehab/calibration/useRehabCalibration";
+import { RehabCalibrationOverlay } from "@/components/rehab/RehabCalibrationOverlay";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { computeShoulderAngle } from "@/lib/biomech/shoulder-live";
 import { DEFAULT_LEVEL_INDEX } from "@/lib/rehab/progressionLadders";
@@ -125,6 +127,11 @@ export function Inner() {
   // auto-save. Dwell refs reset at the live transition so time
   // spent positioning during the countdown never counts toward the
   // hold target.
+  // Two short holds before the countdown: start pose, then show your
+  // range. Records rest and range under metrics.calibration; changes
+  // nothing about how the exercise itself is scored.
+  const calibration = useRehabCalibration("wall-slide", side, side !== null);
+
   const {
     phase: sessionPhase,
     countdown,
@@ -139,10 +146,15 @@ export function Inner() {
     bestPoseRef.current = null;
     bestSignalRef.current = 0;
     sessionStartRef.current = performance.now();
-  }, seq.countdownSec);
+  }, seq.countdownSec, calibration);
+  // Latest calibration summary for the payload, through a ref so
+  // buildRehabPayload keeps its dependency list unchanged.
+  const calibSummaryRef = useRef(calibration.summary);
+  calibSummaryRef.current = calibration.summary;
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
+      calibration.feed(kp as unknown as LiveKeypoint[], video);
       if (!side) return;
       const snap = kpToPoseSnapshot(kp, video.videoWidth, video.videoHeight);
       if (snap) lastKpRef.current = snap;
@@ -214,6 +226,7 @@ export function Inner() {
       movement: "wall-slide",
       side,
       metrics: {
+        calibration: calibSummaryRef.current(),
         exercise_slug: "wall-slide",
         mechanic_id: "hold_in_zone",
         started_at_ms: sessionStartRef.current,
@@ -309,6 +322,12 @@ export function Inner() {
                     <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-400">{side === "left" ? "L" : "R"} shoulder</p>
                     <p className="tabular text-2xl font-semibold text-white">{shoulderAngle.toFixed(0)}°</p>
                   </div>
+                  {sessionPhase === "calibrate" && calibration.state && (
+                    <RehabCalibrationOverlay
+                      state={calibration.state}
+                      onStartAnyway={calibration.startAnyway}
+                    />
+                  )}
                   {sessionPhase === "countdown" && countdown !== null && (
                     <AutoFlowCountdownOverlay countdown={countdown} />
                   )}

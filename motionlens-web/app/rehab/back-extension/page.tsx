@@ -46,6 +46,8 @@ import {
 } from "@/components/rehab/SequenceChrome";
 import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
+import { useRehabCalibration } from "@/lib/rehab/calibration/useRehabCalibration";
+import { RehabCalibrationOverlay } from "@/components/rehab/RehabCalibrationOverlay";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { computeTrunkExtensionAngleDeg } from "@/lib/rehab/poseMetrics";
 import { usePatientContext } from "@/hooks/usePatientContext";
@@ -119,6 +121,11 @@ export function Inner() {
   // Auto-flow: Begin → 3-2-1 countdown → live → complete →
   // auto-save. Session-scoped refs reset at the live transition so
   // countdown framing noise never leaks into the payload.
+  // Two short holds before the countdown: start pose, then show your
+  // range. Records rest and range under metrics.calibration; changes
+  // nothing about how the exercise itself is scored.
+  const calibration = useRehabCalibration("back-extension", null, phase !== "ready");
+
   const {
     phase: sessionPhase,
     countdown,
@@ -129,10 +136,15 @@ export function Inner() {
     bestPoseRef.current = null;
     snapshotRef.current = null;
     sessionStartRef.current = performance.now();
-  }, seq.countdownSec);
+  }, seq.countdownSec, calibration);
+  // Latest calibration summary for the payload, through a ref so
+  // buildRehabPayload keeps its dependency list unchanged.
+  const calibSummaryRef = useRef(calibration.summary);
+  calibSummaryRef.current = calibration.summary;
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
+      calibration.feed(kp as unknown as LiveKeypoint[], video);
       const snap = kpToPoseSnapshot(kp, video.videoWidth, video.videoHeight);
       if (snap) lastKpRef.current = snap;
       const angle = computeTrunkExtensionAngleDeg(
@@ -189,6 +201,7 @@ export function Inner() {
       module: "rehab" as const,
       movement: "back-extension",
       metrics: {
+        calibration: calibSummaryRef.current(),
         exercise_slug: "back-extension",
         mechanic_id: "rep_count",
         started_at_ms: sessionStartRef.current,
@@ -277,6 +290,12 @@ export function Inner() {
                     <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-400">Trunk tilt</p>
                     <p className="tabular text-2xl font-semibold text-white">{trunkAngle.toFixed(0)}°</p>
                   </div>
+                  {sessionPhase === "calibrate" && calibration.state && (
+                    <RehabCalibrationOverlay
+                      state={calibration.state}
+                      onStartAnyway={calibration.startAnyway}
+                    />
+                  )}
                   {sessionPhase === "countdown" && countdown !== null && (
                     <AutoFlowCountdownOverlay countdown={countdown} />
                   )}

@@ -50,6 +50,8 @@ import {
 } from "@/components/rehab/SequenceChrome";
 import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
+import { useRehabCalibration } from "@/lib/rehab/calibration/useRehabCalibration";
+import { RehabCalibrationOverlay } from "@/components/rehab/RehabCalibrationOverlay";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { computeHipAngle } from "@/lib/biomech/hip-live";
 import { BRIDGE_LADDER, DEFAULT_LEVEL_INDEX } from "@/lib/rehab/progressionLadders";
@@ -71,18 +73,25 @@ import { REHAB_EXERCISE_IMAGES } from "@/lib/rehab/exerciseImages";
 
 type Side = "left" | "right";
 
+// The signal is the HIP interior angle, shoulder–hip–knee. Lying
+// supine with knees bent and feet flat it reads ~130–140° (the thigh
+// rises ~40–50° off the floor), NOT 90° — 90° is the knee. At the top
+// of a bridge the three points line up at ~170–180°.
+//
+// The depth line used to be 115°, which a patient only reaches with
+// the feet tucked right under the hips, so on camera the down phase
+// never crossed it and no rep was ever counted. The lines now sit
+// inside the real range: down below 145°, up past 160°.
 const BRIDGE_CONFIG = {
-  // Bridge peak — interior angle near 180° (shoulder-hip-knee
-  // line). Threshold is slightly below 180 to tolerate the
-  // partial extension typical of real bridges.
-  topThreshold: 150,
-  // Bridge bottom — interior ≈ 90° at rest with knees bent.
-  // Threshold sits above 90 so a partial drop still counts as
-  // "depth reached".
-  depthThreshold: 115,
-  // Minimum excursion ~50° catches real bridges; rules out tiny
-  // pelvic wiggles.
-  minAmplitude: 50,
+  // Bridge peak — hips lifted until shoulder, hip and knee are close
+  // to a straight line.
+  topThreshold: 160,
+  // Bridge bottom — back on the floor. Rest reads ~130–140°, so
+  // lowering the hips crosses this with room to spare.
+  depthThreshold: 145,
+  // A real bridge moves ~35–45° (≈135° → ≈175°); 25° rules out small
+  // pelvic wiggles without marking every real rep as shallow.
+  minAmplitude: 25,
   maxJerk: null as number | null,
   pointsPerRep: 10,
 };
@@ -145,6 +154,11 @@ export function Inner() {
   // auto-save. Session-scoped refs reset at the live transition so
   // the countdown seconds never count into the payload's duration
   // or trackers.
+  // Two short holds before the countdown: start pose, then show your
+  // range. Records rest and range under metrics.calibration; changes
+  // nothing about how the exercise itself is scored.
+  const calibration = useRehabCalibration("bridge", side, side !== null);
+
   const {
     phase: sessionPhase,
     countdown,
@@ -156,10 +170,15 @@ export function Inner() {
     snapshotRef.current = null;
     handUseRef.current = createHandUseTracker({ sustainedFrames: 10 });
     sessionStartRef.current = performance.now();
-  }, seq.countdownSec);
+  }, seq.countdownSec, calibration);
+  // Latest calibration summary for the payload, through a ref so
+  // buildRehabPayload keeps its dependency list unchanged.
+  const calibSummaryRef = useRef(calibration.summary);
+  calibSummaryRef.current = calibration.summary;
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
+      calibration.feed(kp as unknown as LiveKeypoint[], video);
       if (!side) return;
       const snap = kpToPoseSnapshot(kp, video.videoWidth, video.videoHeight);
       if (snap) lastKpRef.current = snap;
@@ -227,6 +246,7 @@ export function Inner() {
       movement: "bridge",
       side,
       metrics: {
+        calibration: calibSummaryRef.current(),
         exercise_slug: "bridge",
         mechanic_id: "rep_count",
         started_at_ms: sessionStartRef.current,
@@ -237,9 +257,13 @@ export function Inner() {
           name: "hip_interior",
           unit: "deg",
           value_at_peak: peakBridgeRef.current,
+          // The peak is what is judged, so the band is where a good
+          // peak lands: from the top line up to a fully straight
+          // shoulder–hip–knee (180°). It was depth–top, which put a
+          // perfect 180° bridge "outside the target band".
           target_band: {
-            min: activeConfig.depthThreshold,
-            max: activeConfig.topThreshold,
+            min: activeConfig.topThreshold,
+            max: 180,
           },
         },
         target_reps: TARGET_REPS,
@@ -331,6 +355,12 @@ export function Inner() {
                           : "transition"}
                     </p>
                   </div>
+                  {sessionPhase === "calibrate" && calibration.state && (
+                    <RehabCalibrationOverlay
+                      state={calibration.state}
+                      onStartAnyway={calibration.startAnyway}
+                    />
+                  )}
                   {sessionPhase === "countdown" && countdown !== null && (
                     <AutoFlowCountdownOverlay countdown={countdown} />
                   )}

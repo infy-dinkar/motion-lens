@@ -16,7 +16,7 @@
 import { listPatientReports, getReport } from "@/lib/reports";
 import { EXERCISE_INDICATIONS, INDICATED_SLUGS } from "@/lib/rehab/exerciseIndications";
 import { loadPrescription, readSides, DEFAULT_SIDES } from "@/lib/rehab/prescriptions";
-import { findExercise, needsSide } from "@/lib/rehab/exerciseCatalog";
+import { isOffered, needsSide } from "@/lib/rehab/exerciseCatalog";
 
 const HISTORY_CAP = 30;
 
@@ -303,6 +303,9 @@ export async function computeRecommendations(patientId) {
   for (const slug of INDICATED_SLUGS) {
     const ind = EXERCISE_INDICATIONS[slug];
     if (!ind) continue;
+    // Hidden exercises keep their rules (the data stays auditable and
+    // the progress page still reads them) but are never recommended.
+    if (!isOffered(slug)) continue;
     const priority = ind.priority ?? 2;
     const pw = PRIORITY_WEIGHT[priority] ?? 1.0;
     const reasons = [];
@@ -428,7 +431,9 @@ export async function getPrescribedSet(patientId) {
     // retired slug has no card and no page, so it would render in the
     // strip as a dead entry — drop anything the catalogue no longer
     // knows rather than showing the doctor a link that goes nowhere.
-    const savedSlugs = saved.slugs.filter((slug) => findExercise(slug));
+    // Hidden exercises go too: the editor no longer offers them, so the
+    // doctor could not untick one, and a session must not run it.
+    const savedSlugs = saved.slugs.filter((slug) => isOffered(slug));
     const slugs = new Set(savedSlugs);
     // Build a Recommendation-shaped array for the prescribed set so
     // downstream UI (strip, badges) is source-agnostic.

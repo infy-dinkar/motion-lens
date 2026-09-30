@@ -47,6 +47,8 @@ import {
   SequenceStrip,
 } from "@/components/rehab/SequenceChrome";
 import { useRehabSequence } from "@/lib/rehab/useSequence";
+import { useRehabCalibration } from "@/lib/rehab/calibration/useRehabCalibration";
+import { RehabCalibrationOverlay } from "@/components/rehab/RehabCalibrationOverlay";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { computeLateralTrunkFlexionDeg } from "@/lib/rehab/poseMetrics";
@@ -128,6 +130,11 @@ export function Inner() {
   // Auto-flow: Begin → 3-2-1 countdown → live → complete (at
   // TARGET_REPS) → auto-save. Session-scoped refs reset at the live
   // transition so countdown framing noise never leaks into the payload.
+  // Two short holds before the countdown: start pose, then show your
+  // range. Records rest and range under metrics.calibration; changes
+  // nothing about how the exercise itself is scored.
+  const calibration = useRehabCalibration("side-bend", null, phase !== "ready");
+
   const {
     phase: sessionPhase,
     countdown,
@@ -143,7 +150,13 @@ export function Inner() {
     setVisited({ left: false, right: false });
     setElapsedSec(0);
     sessionStartRef.current = performance.now();
-  }, seq.countdownSec);
+  }, seq.countdownSec, calibration);
+  // Latest calibration summary for the payload, through a ref so
+  // buildRehabPayload keeps its dependency list unchanged.
+  const phaseRef = useRef(sessionPhase);
+  phaseRef.current = sessionPhase;
+  const calibSummaryRef = useRef(calibration.summary);
+  calibSummaryRef.current = calibration.summary;
 
   useEffect(() => {
     if (sessionPhase !== "live") return;
@@ -153,6 +166,7 @@ export function Inner() {
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
+      calibration.feed(kp as unknown as LiveKeypoint[], video);
       const snap = kpToPoseSnapshot(kp, video.videoWidth, video.videoHeight);
       if (snap) lastKpRef.current = snap;
       const rawAngle = computeLateralTrunkFlexionDeg(
@@ -177,6 +191,11 @@ export function Inner() {
           };
         }
       }
+
+      // Only a LIVE bend is a rep. The calibration holds bend to both
+      // sides on purpose and must not tick the counter; go-live resets
+      // the refs anyway, but the number would flash on screen first.
+      if (phaseRef.current !== "live") return;
 
       // ── Full left↔right cycle rep counter ───────────────────────
       // Mark which extreme has been reached; once BOTH sides have been
@@ -223,6 +242,7 @@ export function Inner() {
       module: "rehab" as const,
       movement: "side-bend",
       metrics: {
+        calibration: calibSummaryRef.current(),
         exercise_slug: "side-bend",
         mechanic_id: "rep_count",
         started_at_ms: sessionStartRef.current,
@@ -302,6 +322,12 @@ export function Inner() {
                   </div>
                   {sessionPhase === "countdown" && countdown !== null && (
                     <AutoFlowCountdownOverlay countdown={countdown} />
+                  )}
+                  {sessionPhase === "calibrate" && calibration.state && (
+                    <RehabCalibrationOverlay
+                      state={calibration.state}
+                      onStartAnyway={calibration.startAnyway}
+                    />
                   )}
                   {sessionPhase === "complete" && <AutoFlowCompleteOverlay />}
                 </RehabCameraShell>

@@ -50,6 +50,8 @@ import {
 } from "@/components/rehab/SequenceChrome";
 import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
+import { useRehabCalibration } from "@/lib/rehab/calibration/useRehabCalibration";
+import { RehabCalibrationOverlay } from "@/components/rehab/RehabCalibrationOverlay";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { computeKneeAngle } from "@/lib/biomech/knee-live";
 import { DEFAULT_LEVEL_INDEX } from "@/lib/rehab/progressionLadders";
@@ -150,6 +152,11 @@ export function Inner() {
   // Auto-flow: side pick → 3-2-1 countdown → live → complete (at
   // TARGET_REPS) → auto-save. Session-scoped refs reset at the live
   // transition so countdown framing noise never leaks into the payload.
+  // Two short holds before the countdown: start pose, then show your
+  // range. Records rest and range under metrics.calibration; changes
+  // nothing about how the exercise itself is scored.
+  const calibration = useRehabCalibration("knee-extension", side, side !== null);
+
   const {
     phase: sessionPhase,
     countdown,
@@ -163,7 +170,11 @@ export function Inner() {
     setReps(0);
     setElapsedSec(0);
     sessionStartRef.current = performance.now();
-  }, seq.countdownSec);
+  }, seq.countdownSec, calibration);
+  // Latest calibration summary for the payload, through a ref so
+  // buildRehabPayload keeps its dependency list unchanged.
+  const calibSummaryRef = useRef(calibration.summary);
+  calibSummaryRef.current = calibration.summary;
 
   // Auto-complete once the patient hits the rep target.
   const handleSnapshot = useCallback(
@@ -211,6 +222,7 @@ export function Inner() {
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
+      calibration.feed(kp as unknown as LiveKeypoint[], video);
       if (!side) return;
       const snap = kpToPoseSnapshot(kp, video.videoWidth, video.videoHeight);
       if (snap) lastKpRef.current = snap;
@@ -259,6 +271,7 @@ export function Inner() {
       movement: "knee-extension",
       side,
       metrics: {
+        calibration: calibSummaryRef.current(),
         exercise_slug: "knee-extension",
         mechanic_id: "rep_count",
         started_at_ms: sessionStartRef.current,
@@ -357,6 +370,12 @@ export function Inner() {
                       {displayExt >= 165 ? "near terminal" : "extending"}
                     </p>
                   </div>
+                  {sessionPhase === "calibrate" && calibration.state && (
+                    <RehabCalibrationOverlay
+                      state={calibration.state}
+                      onStartAnyway={calibration.startAnyway}
+                    />
+                  )}
                   {sessionPhase === "countdown" && countdown !== null && (
                     <AutoFlowCountdownOverlay countdown={countdown} />
                   )}

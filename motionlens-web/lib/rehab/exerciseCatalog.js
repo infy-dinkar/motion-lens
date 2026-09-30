@@ -31,6 +31,10 @@ import {
  * @property {RehabJoint} joint
  * @property {string} title
  * @property {MechanicId} mechanic
+ * @property {boolean} [hidden]  Kept in the catalogue (the page, its
+ *   route and saved reports all still work) but not offered: no card,
+ *   not in the prescription editor, never recommended, and dropped
+ *   from saved prescriptions. See visibleExercises().
  * @property {boolean} [needsSide]  True when the exercise is worked one
  *   side at a time and the page asks which. Drives the Left/Right
  *   choice in the prescription editor, and whether a prescribed
@@ -112,6 +116,7 @@ export const REHAB_EXERCISES = [
     title: "Step-Up Control",
     mechanic: "rep_count",
     needsSide: true,
+    hidden: true,
     publicBody:
       "Stepping-leg knee control on a low platform. Patient steps up reaching full extension, lowers under control. The same Rep-Count engine K1 uses gates depth and amplitude.",
     patientBody:
@@ -397,6 +402,7 @@ export const REHAB_EXERCISES = [
     joint: "shoulder",
     title: "Scapular Set (coarse)",
     mechanic: "rep_count",
+    hidden: true,
     publicBody:
       "Scapular retraction rep counter using shoulder-width narrowing as a coarse proxy. Auto-calibrates the neutral baseline, then counts retract → release cycles. Rep-Count mechanic — trend-only.",
     patientBody:
@@ -423,7 +429,7 @@ export const JOINT_META = {
  * @param {RehabExerciseEntry[]} [exercises]
  * @returns {JointGroup[]}
  */
-export function groupExercisesByJoint(exercises = REHAB_EXERCISES) {
+export function groupExercisesByJoint(exercises = visibleExercises()) {
   /** @type {Record<RehabJoint, RehabExerciseEntry[]>} */
   const byJoint = { knee: [], hip: [], back: [], shoulder: [] };
   for (const ex of exercises) byJoint[ex.joint]?.push(ex);
@@ -441,6 +447,26 @@ export function groupExercisesByJoint(exercises = REHAB_EXERCISES) {
  */
 export function findExercise(slug) {
   return REHAB_EXERCISES.find((e) => e.slug === slug) ?? null;
+}
+
+/**
+ * The exercises that are offered: everything not marked `hidden`.
+ * Cards, the prescription editor and the recommender use this;
+ * findExercise() still knows every slug so pages and old reports work.
+ * @returns {RehabExerciseEntry[]}
+ */
+export function visibleExercises() {
+  return REHAB_EXERCISES.filter((e) => !e.hidden);
+}
+
+/**
+ * Is this slug offered? False for hidden and for unknown slugs.
+ * @param {string} slug
+ * @returns {boolean}
+ */
+export function isOffered(slug) {
+  const ex = findExercise(slug);
+  return ex !== null && !ex.hidden;
 }
 
 /** Slug → joint lookup (used by RehabProgressDashboard for grouping). */

@@ -18,8 +18,12 @@
 // escape hatch the squat prototype shipped with.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { POST_GATE_COUNTDOWN_SEC } from "@/lib/rehab/calibration/specs";
+import type { RehabCalibration } from "@/lib/rehab/calibration/useRehabCalibration";
 
-export type RehabAutoFlowPhase = "countdown" | "live" | "complete";
+/** "calibrate" only ever appears on a page that passes a calibration
+ *  to the hook; every other page sees the original three. */
+export type RehabAutoFlowPhase = "calibrate" | "countdown" | "live" | "complete";
 
 /** Default when the patient started the exercise themselves and is
  *  already in front of the camera. */
@@ -40,6 +44,15 @@ export function useRehabAutoFlow(
    * way.
    */
   countdownSec?: number,
+  /**
+   * The page's useRehabCalibration, when it has one. While it is
+   * enabled and not done the machine sits in "calibrate" instead of
+   * counting down; when it completes, the countdown runs for
+   * POST_GATE_COUNTDOWN_SEC regardless of `countdownSec` — the holds
+   * have already given the patient the positioning time that number
+   * was guessing at.
+   */
+  calibration?: RehabCalibration | null,
 ): {
   phase: RehabAutoFlowPhase | null;
   countdown: number | null;
@@ -68,15 +81,26 @@ export function useRehabAutoFlow(
   // remount anyway.
   const secRef = useRef(countdownSec);
   secRef.current = countdownSec;
+  const calibEnabled = calibration?.enabled ?? false;
+  const calibDone = calibration?.done ?? true;
   useEffect(() => {
     if (!started) {
       setPhase(null);
       setCountdown(null);
       return;
     }
+    // Calibration first, when the page has one. `calibDone` flipping
+    // true re-runs this effect and drops through to the countdown.
+    if (calibEnabled && !calibDone) {
+      setPhase("calibrate");
+      setCountdown(null);
+      return;
+    }
     setPhase("countdown");
-    setCountdown(secRef.current ?? COUNTDOWN_START_SEC);
-  }, [started]);
+    setCountdown(
+      calibEnabled ? POST_GATE_COUNTDOWN_SEC : (secRef.current ?? COUNTDOWN_START_SEC),
+    );
+  }, [started, calibEnabled, calibDone]);
 
   // Countdown tick — flips to live at 0.
   useEffect(() => {

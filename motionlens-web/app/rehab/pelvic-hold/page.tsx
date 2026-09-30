@@ -47,6 +47,8 @@ import {
 } from "@/components/rehab/SequenceChrome";
 import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
+import { useRehabCalibration } from "@/lib/rehab/calibration/useRehabCalibration";
+import { RehabCalibrationOverlay } from "@/components/rehab/RehabCalibrationOverlay";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import { computePelvicTiltDeg } from "@/lib/rehab/poseMetrics";
 import { usePatientContext } from "@/hooks/usePatientContext";
@@ -144,6 +146,11 @@ export function Inner() {
   // auto-save. Dwell refs reset at the live transition so time
   // spent positioning during the countdown never counts toward the
   // hold target.
+  // Two short holds before the countdown: start pose, then show your
+  // range. Records rest and range under metrics.calibration; changes
+  // nothing about how the exercise itself is scored.
+  const calibration = useRehabCalibration("pelvic-hold", stance, stance !== null);
+
   const {
     phase: sessionPhase,
     countdown,
@@ -166,10 +173,15 @@ export function Inner() {
     bestPoseRef.current = null;
     bestSignalRef.current = 0;
     sessionStartRef.current = performance.now();
-  }, seq.countdownSec);
+  }, seq.countdownSec, calibration);
+  // Latest calibration summary for the payload, through a ref so
+  // buildRehabPayload keeps its dependency list unchanged.
+  const calibSummaryRef = useRef(calibration.summary);
+  calibSummaryRef.current = calibration.summary;
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
+      calibration.feed(kp as unknown as LiveKeypoint[], video);
       const snap = kpToPoseSnapshot(kp, video.videoWidth, video.videoHeight);
       if (snap) lastKpRef.current = snap;
       const rawTilt = computePelvicTiltDeg(
@@ -181,9 +193,13 @@ export function Inner() {
         // display sits at 0 (centred) while calibrating; the timer does
         // not accumulate during the countdown.
         if (sessionPhase !== "live" && sessionPhase !== "complete") {
-          calibSamplesRef.current.push(rawTilt);
-          if (calibSamplesRef.current.length > 90) {
-            calibSamplesRef.current.shift();
+          // Not during calibration: its range hold is a one-leg
+          // stance, which is not the baseline this exercise means.
+          if (sessionPhase !== "calibrate") {
+            calibSamplesRef.current.push(rawTilt);
+            if (calibSamplesRef.current.length > 90) {
+              calibSamplesRef.current.shift();
+            }
           }
           setPelvicTilt(0);
           lastTickRef.current = null;
@@ -254,6 +270,7 @@ export function Inner() {
       movement: "pelvic-hold",
       side: stance,
       metrics: {
+        calibration: calibSummaryRef.current(),
         exercise_slug: "pelvic-hold",
         mechanic_id: "hold_in_zone",
         started_at_ms: sessionStartRef.current,
@@ -350,6 +367,12 @@ export function Inner() {
                     <p className="tabular text-2xl font-semibold text-white">{pelvicTilt > 0 ? "+" : ""}{pelvicTilt.toFixed(1)}°</p>
                     <p className="mt-1 text-[10px] text-zinc-300">{tiltSide}</p>
                   </div>
+                  {sessionPhase === "calibrate" && calibration.state && (
+                    <RehabCalibrationOverlay
+                      state={calibration.state}
+                      onStartAnyway={calibration.startAnyway}
+                    />
+                  )}
                   {sessionPhase === "countdown" && countdown !== null && (
                     <AutoFlowCountdownOverlay countdown={countdown} />
                   )}

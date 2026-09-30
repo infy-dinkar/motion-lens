@@ -1,0 +1,384 @@
+// One exercise's calibration, start to finish.
+//
+// Walks the spec's holds in order. Each frame it asks readiness.ts
+// whether the camera can see what it needs, reads the signal, decides
+// whether anything blocks the hold, and feeds all of that to one
+// HoldTracker. When a hold completes its recorded value is kept and the
+// next hold begins; after the last, `done` flips and the summary is
+// ready for metrics.calibration.
+//
+// Two rules that come from the plan rather than the mechanics:
+//
+//   • "Show your range" must actually show a range. A second hold that
+//     reads within a few degrees of the first is the start pose held
+//     twice, and it is blocked with its own message until the patient
+//     moves. The delta is small on purpose — it proves movement, it
+//     does not set a target.
+//
+//   • With `contralateral`, only the working limb may move: a range
+//     hold where the OTHER side moved more is blocked. Seen on camera:
+//     knee extension calibrated with the wrong leg lifted.
+//
+//   • Per-exercise pose gates (poseGates.ts) block holds whose pose a
+//     single signal cannot check (external rotation, pelvic hold).
+//
+//   • A two-sided range (side bend, weight shift) must show BOTH sides. The second
+//     side hold is blocked until the reading is on the other side of
+//     rest from the first. Without this, staying bent on one side
+//     completed both holds.
+//
+//   • Nobody is locked out. A hold still incomplete after
+//     START_ANYWAY_MS offers a way through; taking it records the hold
+//     as skipped (value null) and moves on. The exercise runs either
+//     way; the report says which holds were real.
+//
+// Deliberately framework-free — a plain class fed from the page's
+// existing onFrame callback — so it can be benched with synthetic
+// frames and reused unchanged in standalone and session flows.
+
+import type { LiveKeypoint } from "@/hooks/usePoseDetectionLive";
+import {
+  HoldTracker,
+  HOLD_MESSAGE,
+  type HoldStatus,
+} from "@/lib/rehab/calibration/holdTracker";
+import {
+  assessReadiness,
+  type Check,
+} from "@/lib/rehab/calibration/readiness";
+import {
+  readCalibSignal,
+  type FrameSize,
+  type Side,
+  otherSide,
+} from "@/lib/rehab/calibration/signals";
+import { poseGate } from "@/lib/rehab/calibration/poseGates";
+import {
+  START_ANYWAY_MS,
+  type CalibrationSpec,
+  type HoldSpec,
+  type SignalUnit,
+} from "@/lib/rehab/calibration/specs";
+
+/** Smallest change from rest that counts as "moved" for a range hold.
+ *  Proves movement; does not set a target. */
+export const MIN_RANGE_DELTA: Record<SignalUnit, number> = {
+  deg: 10,
+  ratio: 0.04,
+};
+
+export interface HoldResult {
+  id: HoldSpec["id"];
+  value: number | null;
+  skipped: boolean;
+}
+
+export interface SessionState {
+  /** Index into spec.holds. Equals holds.length once done. */
+  holdIndex: number;
+  total: number;
+  /** The hold in progress, or null once done. */
+  hold: HoldSpec | null;
+  /** 0..1 ring fill for the current hold. */
+  progress: number;
+  status: HoldStatus;
+  /** The one line to show under the ring. */
+  message: string;
+  /** Non-blocking note (distance), or null. */
+  warn: string | null;
+  checks: Check[];
+  /** Current hold has run longer than START_ANYWAY_MS without
+   *  completing. */
+  canStartAnyway: boolean;
+  /** Time on the current hold, ms. */
+  elapsedMs: number;
+  /** Latest signal reading, for the debug overlay. */
+  value: number | null;
+  done: boolean;
+  results: HoldResult[];
+  /** Everything the current decision rests on. Debug overlay only. */
+  debug: {
+    rest: number | null;
+    /** How far the reading must move from rest for a range hold. */
+    minDelta: number;
+    drift: number;
+    viewRatio: number | null;
+    facingDiff: number | null;
+    scale: number | null;
+    /** Exercise-specific numbers (pose gate, contralateral, back view). */
+    extra: string | null;
+  };
+}
+
+/** What lands in metrics.calibration. Additive; the report renderer
+ *  ignores unknown keys, so nothing has to change for it to be saved. */
+export interface CalibrationSummary {
+  signal: string;
+  unit: SignalUnit;
+  view: CalibrationSpec["view"];
+  rest: number | null;
+  range: number | null;
+  range_left?: number | null;
+  range_right?: number | null;
+  holds_passed: number;
+  holds_total: number;
+  skipped: boolean;
+  scale_fraction: number | null;
+  captured_at_ms: number;
+}
+
+type SignalReader = typeof readCalibSignal;
+
+export class CalibrationSession {
+  private tracker = new HoldTracker();
+  private index = 0;
+  private results: HoldResult[] = [];
+  private holdStartMs: number | null = null;
+  private lastState: SessionState;
+  private lastScale: number | null = null;
+  private lastRef = { nx: 0.5, ny: 0.5 };
+  /** The other side's reading at the moment rest was recorded, for the
+   *  contralateral check; and its latest reading while resting. */
+  private restOther: number | null = null;
+  private lastOther: number | null = null;
+
+  constructor(
+    readonly spec: CalibrationSpec,
+    readonly side: Side | null,
+    private readonly readSignal: SignalReader = readCalibSignal,
+  ) {
+    this.lastState = this.snapshot(0, HOLD_MESSAGE.idle, null, [], false, 0, null);
+  }
+
+  get state(): SessionState {
+    return this.lastState;
+  }
+
+  reset(): void {
+    this.tracker.reset();
+    this.index = 0;
+    this.results = [];
+    this.holdStartMs = null;
+    this.lastScale = null;
+    this.restOther = null;
+    this.lastOther = null;
+    this.lastState = this.snapshot(0, HOLD_MESSAGE.idle, null, [], false, 0, null);
+  }
+
+  /** The rest value once Hold 1 has recorded it, else null. */
+  private restValue(): number | null {
+    const r = this.results.find((x) => x.id === "rest");
+    return r && r.value !== null ? r.value : null;
+  }
+
+  /** The first side of a two-sided range, once recorded, else null. */
+  private firstSideValue(): number | null {
+    const r = this.results.find((x) => x.id === "range_left");
+    return r && r.value !== null ? r.value : null;
+  }
+
+  /**
+   * Feed one frame. Call from the page's onFrame with the raw
+   * keypoints and the video size.
+   */
+  feed(kp: LiveKeypoint[], frame: FrameSize, nowMs: number): SessionState {
+    const hold = this.spec.holds[this.index];
+    if (!hold) return this.lastState;
+    if (this.holdStartMs === null) this.holdStartMs = nowMs;
+
+    const ready = assessReadiness(this.spec, kp, frame, this.side);
+    if (ready.scale !== null) this.lastScale = ready.scale;
+    if (ready.ref) this.lastRef = ready.ref;
+
+    const value = this.readSignal(
+      this.spec.signal, kp, this.side, this.spec.signalSide, frame,
+    );
+
+    const minDelta = MIN_RANGE_DELTA[this.spec.unit];
+    let block = ready.block;
+    const extra: string[] = [];
+    if (ready.debug.extra) extra.push(ready.debug.extra);
+
+    // The exercise's own pose check, when it has one.
+    if (block === null) {
+      const g = poseGate(this.spec.slug, kp, hold.id, this.side);
+      if (g.debug) extra.push(g.debug);
+      block = g.block;
+    }
+
+    // Only the working limb may move (opt-in per spec).
+    const checkOther = this.spec.contralateral === true && this.side !== null;
+    const otherNow = checkOther
+      ? this.readSignal(this.spec.signal, kp, otherSide(this.side!), this.spec.signalSide, frame)
+      : null;
+    if (hold.id === "rest") this.lastOther = otherNow;
+    if (block === null && checkOther && hold.id !== "rest" && value !== null && otherNow !== null) {
+      const rest = this.restValue();
+      if (rest !== null && this.restOther !== null) {
+        const own = Math.abs(value - rest);
+        const oth = Math.abs(otherNow - this.restOther);
+        extra.push(`own Δ ${own.toFixed(1)} · other Δ ${oth.toFixed(1)}`);
+        if (oth >= minDelta && oth > own) {
+          // From the signal, not the parts: wall slide lists the hip
+          // (for the view check) but moves the arm.
+          const limb = /^(shoulder|forearm)_/.test(this.spec.signal) ? "arm" : "leg";
+          block = `Use your ${this.side!.toUpperCase()} ${limb}`;
+        }
+      }
+    }
+
+    // Range the wrong way (opt-in per spec).
+    if (block === null && hold.id === "range" && value !== null && this.spec.rangeDirection) {
+      const rest = this.restValue();
+      if (rest !== null) {
+        const wrong = this.spec.rangeDirection === "lower"
+          ? value > rest + minDelta / 2
+          : value < rest - minDelta / 2;
+        if (wrong) block = this.spec.wrongWayMessage ?? "Other way";
+      }
+    }
+
+    // Range holds must differ from rest by more than noise.
+    if (block === null && hold.id !== "rest" && value !== null) {
+      const rest = this.restValue();
+      if (rest !== null && Math.abs(value - rest) < minDelta) {
+        block = "Move further — show me your range";
+      }
+      // The second side must be the other side of rest from the first.
+      if (block === null && hold.id === "range_right") {
+        const first = this.firstSideValue();
+        const base = rest ?? 0;
+        if (first !== null && Math.sign(value - base) === Math.sign(first - base)) {
+          block = hold.otherSideMessage ?? "Now go to the other side";
+        }
+      }
+    }
+
+    const recorded = this.tracker.feed(this.lastRef, value, block, nowMs);
+    const elapsed = nowMs - this.holdStartMs;
+
+    if (recorded !== null) {
+      if (hold.id === "rest") this.restOther = this.lastOther;
+      this.results.push({ id: hold.id, value: recorded, skipped: false });
+      this.advance();
+      const next = this.spec.holds[this.index] ?? null;
+      this.lastState = this.snapshot(
+        0,
+        next ? HOLD_MESSAGE.idle : "Calibration complete",
+        null,
+        ready.checks,
+        false,
+        0,
+        value,
+      );
+      return this.lastState;
+    }
+
+    const message =
+      block ?? (this.tracker.blockReason || HOLD_MESSAGE[this.tracker.status]);
+    this.lastState = this.snapshot(
+      this.tracker.progress,
+      message,
+      ready.warn,
+      ready.checks,
+      elapsed >= START_ANYWAY_MS,
+      elapsed,
+      value,
+      { ...ready.debug, extra: extra.length ? extra.join(" · ") : null },
+    );
+    return this.lastState;
+  }
+
+  /** "Start anyway": give up on the current hold and move on. */
+  skipHold(): void {
+    const hold = this.spec.holds[this.index];
+    if (!hold) return;
+    this.results.push({ id: hold.id, value: null, skipped: true });
+    this.advance();
+    const next = this.spec.holds[this.index] ?? null;
+    this.lastState = this.snapshot(
+      0,
+      next ? HOLD_MESSAGE.idle : "Calibration complete",
+      null,
+      this.lastState.checks,
+      false,
+      0,
+      this.lastState.value,
+    );
+  }
+
+  private advance(): void {
+    this.index += 1;
+    this.tracker.reset();
+    this.holdStartMs = null;
+  }
+
+  summary(nowMs: number): CalibrationSummary {
+    const get = (id: HoldSpec["id"]) => {
+      const r = this.results.find((x) => x.id === id);
+      return r ? r.value : null;
+    };
+    const passed = this.results.filter((r) => !r.skipped).length;
+    const out: CalibrationSummary = {
+      signal: this.spec.signal,
+      unit: this.spec.unit,
+      view: this.spec.view,
+      rest: get("rest"),
+      range: get("range"),
+      holds_passed: passed,
+      holds_total: this.spec.holds.length,
+      skipped: this.results.some((r) => r.skipped) || passed < this.spec.holds.length,
+      scale_fraction: this.lastScale === null ? null : Math.round(this.lastScale * 1000) / 1000,
+      captured_at_ms: nowMs,
+    };
+    if (this.spec.holds.some((h) => h.id === "range_left")) {
+      // The holds are "first side" and "second side"; the patient may
+      // start with either. File them by sign (positive = anatomical
+      // right) so the report's left and right are the real sides.
+      const a = get("range_left");
+      const b = get("range_right");
+      const base = out.rest ?? 0;
+      const vals = [a, b].filter((v): v is number => v !== null);
+      out.range_left = vals.find((v) => v - base < 0) ?? null;
+      out.range_right = vals.find((v) => v - base > 0) ?? null;
+    }
+    return out;
+  }
+
+  private snapshot(
+    progress: number,
+    message: string,
+    warn: string | null,
+    checks: Check[],
+    canStartAnyway: boolean,
+    elapsedMs: number,
+    value: number | null,
+    debug?: Partial<SessionState["debug"]>,
+  ): SessionState {
+    const hold = this.spec.holds[this.index] ?? null;
+    return {
+      debug: {
+        rest: this.restValue(),
+        minDelta: MIN_RANGE_DELTA[this.spec.unit],
+        drift: this.tracker.lastDrift,
+        viewRatio: debug?.viewRatio ?? null,
+        facingDiff: debug?.facingDiff ?? null,
+        scale: this.lastScale,
+        extra: debug?.extra ?? null,
+      },
+      holdIndex: this.index,
+      total: this.spec.holds.length,
+      hold,
+      progress,
+      status: this.tracker.status,
+      message,
+      warn,
+      checks,
+      canStartAnyway,
+      elapsedMs,
+      value,
+      done: hold === null,
+      results: [...this.results],
+    };
+  }
+}

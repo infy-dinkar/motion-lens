@@ -55,6 +55,8 @@ import {
 } from "@/components/rehab/SequenceChrome";
 import { useRehabSequence } from "@/lib/rehab/useSequence";
 import { useRehabAutoFlow } from "@/lib/rehab/useAutoFlow";
+import { useRehabCalibration } from "@/lib/rehab/calibration/useRehabCalibration";
+import { RehabCalibrationOverlay } from "@/components/rehab/RehabCalibrationOverlay";
 import { LiveModeLayout } from "@/components/live/LiveModeLayout";
 import {
   computeHipWidth,
@@ -185,6 +187,11 @@ export function Inner() {
   // locks. Session-scoped refs reset at the live transition; the
   // calibration baseline itself is NOT reset here (Recalibrate
   // flips phase back to "calibrating", which also resets the flow).
+  // Two short holds before the countdown: start pose, then show your
+  // range. Records rest and range under metrics.calibration; changes
+  // nothing about how the exercise itself is scored.
+  const calibration = useRehabCalibration("scapular-set", null, phase === "playing");
+
   const {
     phase: sessionPhase,
     countdown,
@@ -195,10 +202,15 @@ export function Inner() {
     bestPoseRef.current = null;
     snapshotRef.current = null;
     sessionStartRef.current = performance.now();
-  }, seq.countdownSec);
+  }, seq.countdownSec, calibration);
+  // Latest calibration summary for the payload, through a ref so
+  // buildRehabPayload keeps its dependency list unchanged.
+  const calibSummaryRef = useRef(calibration.summary);
+  calibSummaryRef.current = calibration.summary;
 
   const handleFrame = useCallback(
     (kp: Keypoint[], video: HTMLVideoElement) => {
+      calibration.feed(kp as unknown as LiveKeypoint[], video);
       const snap = kpToPoseSnapshot(kp, video.videoWidth, video.videoHeight);
       if (snap) lastKpRef.current = snap;
       const liveKp = kp as unknown as LiveKeypoint[];
@@ -306,6 +318,7 @@ export function Inner() {
       module: "rehab" as const,
       movement: "scapular-set",
       metrics: {
+        calibration: calibSummaryRef.current(),
         exercise_slug: "scapular-set",
         mechanic_id: "rep_count",
         started_at_ms: sessionStartRef.current,
@@ -406,7 +419,7 @@ export function Inner() {
                 Get set up
               </h2>
               <p className="mt-1 text-sm text-muted">
-                Stand tall facing the camera with your body from{" "}
+                Stand tall with your back to the camera, body from{" "}
                 <span className="font-semibold text-foreground">shoulders to hips</span>{" "}
                 in frame (the hips let the system tell a real squeeze
                 apart from turning). When you start, a 3-2-1 countdown
@@ -437,6 +450,12 @@ export function Inner() {
                   <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-400">Retraction · proxy</p>
                   <p className="tabular text-2xl font-semibold text-white">{retractionProxy.toFixed(1)}</p>
                 </div>
+                {sessionPhase === "calibrate" && calibration.state && (
+                  <RehabCalibrationOverlay
+                    state={calibration.state}
+                    onStartAnyway={calibration.startAnyway}
+                  />
+                )}
                 {sessionPhase === "countdown" && countdown !== null && (
                   <AutoFlowCountdownOverlay countdown={countdown} />
                 )}

@@ -88,12 +88,18 @@ export const WEIGHT_SHIFT_LADDER = [
   { level: 4, halfWidth: 0.12, dwellMs: 1250 },
 ];
 
+// Hip interior angle (shoulder–hip–knee): ~130–140° lying with knees
+// bent, ~170–180° at the top. The depth line stays at 145° on every
+// level — lowering the hips to the floor is not what gets harder; the
+// levels ask for a higher bridge (top) and a bigger movement. The old
+// depth lines (100–118°) sat below where the hips ever go, so no rep
+// was counted.
 export const BRIDGE_LADDER = [
-  { level: 0, topThreshold: 130, depthThreshold: 100, minAmplitude: 25, targetReps: 6,  pointsPerRep: 6 },
-  { level: 1, topThreshold: 140, depthThreshold: 108, minAmplitude: 35, targetReps: 8,  pointsPerRep: 8 },
-  { level: 2, topThreshold: 145, depthThreshold: 112, minAmplitude: 45, targetReps: 10, pointsPerRep: 9 },
-  { level: 3, topThreshold: 150, depthThreshold: 115, minAmplitude: 50, targetReps: 10, pointsPerRep: 10 }, // = default
-  { level: 4, topThreshold: 155, depthThreshold: 118, minAmplitude: 55, targetReps: 12, pointsPerRep: 12 },
+  { level: 0, topThreshold: 152, depthThreshold: 145, minAmplitude: 15, targetReps: 6,  pointsPerRep: 6 },
+  { level: 1, topThreshold: 155, depthThreshold: 145, minAmplitude: 20, targetReps: 8,  pointsPerRep: 8 },
+  { level: 2, topThreshold: 158, depthThreshold: 145, minAmplitude: 22, targetReps: 10, pointsPerRep: 9 },
+  { level: 3, topThreshold: 160, depthThreshold: 145, minAmplitude: 25, targetReps: 10, pointsPerRep: 10 }, // = default
+  { level: 4, topThreshold: 165, depthThreshold: 145, minAmplitude: 30, targetReps: 12, pointsPerRep: 12 },
 ];
 
 export const MARCHING_LADDER = [

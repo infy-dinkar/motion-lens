@@ -195,13 +195,17 @@ export function ResultStat({ label, value }: { label: string; value: string }) {
 export function ProgressRing({
   progress,
   active,
+  holdMs = HOLD_MS,
 }: {
   progress: number;
   active: boolean;
+  /** Length of the hold the ring counts down. Defaults to the Games
+   *  hold; rehab calibration passes its own shorter one. */
+  holdMs?: number;
 }) {
   const R = 54;
   const C = 2 * Math.PI * R;
-  const secs = Math.max(0, HOLD_MS / 1000 - progress * (HOLD_MS / 1000));
+  const secs = Math.max(0, holdMs / 1000 - progress * (holdMs / 1000));
   return (
     <div className="relative h-32 w-32">
       <svg viewBox="0 0 128 128" className="h-full w-full -rotate-90">
