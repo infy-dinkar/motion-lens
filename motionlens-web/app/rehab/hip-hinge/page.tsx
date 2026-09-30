@@ -121,7 +121,7 @@ export function Inner() {
   // Two short holds before the countdown: start pose, then show your
   // range. Records rest and range under metrics.calibration; changes
   // nothing about how the exercise itself is scored.
-  const calibration = useRehabCalibration("hip-hinge", null, side !== null);
+  const calibration = useRehabCalibration("hip-hinge", side, side !== null);
 
   const {
     phase: sessionPhase,

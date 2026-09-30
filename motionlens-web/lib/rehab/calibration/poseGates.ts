@@ -199,8 +199,42 @@ function trunkGate(want: "forward" | "backward"): Gate {
   };
 }
 
+// ── Which side is toward the camera (hip hinge, posture hold) ──────
+//
+// Seen on camera: picking LEFT and standing with the RIGHT side to the
+// camera passed on both pages. The generic facing check compares how
+// clearly each side's landmarks are seen, and ears, shoulders and hips
+// read about equally well from either side, so it never fires here.
+// The face does not lie: the nose points the way the patient faces.
+// Keypoints are RAW camera coordinates (the view is mirrored only for
+// display), so with the RIGHT side toward the camera the face points
+// toward +x, with the LEFT side toward -x.
+const sideGate: Gate = (kp, _holdId, side) => {
+  if (side === null) return NONE;
+  const face = facing(kp);
+  if (face === null) return NONE;
+  const want = side === "right" ? 1 : -1;
+  const debug = `face ${face > 0 ? "+x" : "-x"} (want ${want > 0 ? "+x" : "-x"} for ${side})`;
+  if (face !== want) {
+    return { block: `Turn around — your ${side.toUpperCase()} side should face the camera`, debug };
+  }
+  return { block: null, debug };
+};
+
+/** First gate that blocks wins; debug lines are joined. */
+function both(a: Gate, b: Gate): Gate {
+  return (kp, holdId, side) => {
+    const r1 = a(kp, holdId, side);
+    if (r1.block) return r1;
+    const r2 = b(kp, holdId, side);
+    const debug = [r1.debug, r2.debug].filter(Boolean).join(" · ") || null;
+    return { block: r2.block, debug };
+  };
+}
+
 const GATES: Record<string, Gate> = {
-  "hip-hinge": trunkGate("forward"),
+  "hip-hinge": both(sideGate, trunkGate("forward")),
+  "posture-hold": sideGate,
   "back-extension": trunkGate("backward"),
   "bird-dog": birdDog,
   "external-rotation": externalRotation,
