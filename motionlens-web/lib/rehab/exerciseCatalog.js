@@ -35,6 +35,9 @@ import {
  *   route and saved reports all still work) but not offered: no card,
  *   not in the prescription editor, never recommended, and dropped
  *   from saved prescriptions. See visibleExercises().
+ * @property {string[]} [issues]  Issue codes this exercise is used for
+ *   (lib/rehab/issueCodes.js) — from the physio PDF, or researched where
+ *   the exercise is not in it. Shown on cards; drives the issue filter.
  * @property {boolean} [needsSide]  True when the exercise is worked one
  *   side at a time and the page asks which. Drives the Left/Right
  *   choice in the prescription editor, and whether a prescribed
@@ -66,6 +69,7 @@ export const REHAB_EXERCISES = [
   // ── KNEE ───────────────────────────────────────────────────────
   {
     slug: "squat",
+    issues: ["K1", "K2", "K3", "K4", "K9", "H1"],
     code: "K1",
     joint: "knee",
     title: "Controlled Squat",
@@ -81,6 +85,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "mini-squat",
+    issues: ["K1", "K2", "K4", "K5", "H1", "H3", "H4"],
     code: "K2",
     joint: "knee",
     title: "Mini-Squat",
@@ -96,6 +101,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "knee-extension",
+    issues: ["K1", "K2", "K3", "K9", "K10"],
     code: "K3",
     joint: "knee",
     title: "Terminal Knee Extension",
@@ -111,6 +117,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "step-up",
+    issues: ["H1", "H7", "H8", "K1", "K2", "K3", "K4", "K9"],
     code: "K4",
     joint: "knee",
     title: "Step-Up Control",
@@ -127,6 +134,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "wall-sit",
+    issues: ["K2", "K3", "K7"],
     code: "K5",
     joint: "knee",
     title: "Wall Sit",
@@ -142,6 +150,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "single-leg-squat",
+    issues: ["K2", "K3", "K8", "K10", "H2"],
     code: "K6",
     joint: "knee",
     title: "Single-Leg Squat",
@@ -159,6 +168,7 @@ export const REHAB_EXERCISES = [
   // ── HIP ────────────────────────────────────────────────────────
   {
     slug: "pelvic-hold",
+    issues: ["H1", "H2", "H4", "H7", "L7", "K8"],
     code: "H1",
     joint: "hip",
     title: "Pelvic-Level Hold",
@@ -174,6 +184,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "hip-abduction",
+    issues: ["H1", "H2", "H7", "H8", "K2", "K8", "K10"],
     code: "H2",
     joint: "hip",
     title: "Hip Abduction",
@@ -189,6 +200,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "weight-shift",
+    issues: ["H1", "H7", "H8", "K3", "K9", "A5"],
     code: "H3",
     joint: "hip",
     title: "Weight-Shift Balance",
@@ -203,6 +215,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "bridge",
+    issues: ["L1", "L4", "L5", "L6", "L7", "L8", "L9", "H1", "H2", "H3", "H4", "H6", "H7", "H8"],
     code: "H4",
     joint: "hip",
     title: "Bridge",
@@ -218,6 +231,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "marching",
+    issues: ["H7", "H8", "K1", "K9", "C7"],
     code: "H5",
     joint: "hip",
     title: "Marching",
@@ -232,6 +246,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "lateral-step",
+    issues: ["H1", "H2", "H3", "H4", "K2", "K8", "K10"],
     code: "H6",
     joint: "hip",
     title: "Lateral Step",
@@ -249,6 +264,7 @@ export const REHAB_EXERCISES = [
   // ── BACK ───────────────────────────────────────────────────────
   {
     slug: "posture-hold",
+    issues: ["C1", "C2", "C3", "C4", "C5", "T1", "T3", "T4", "J1", "J4"],
     code: "B1",
     joint: "back",
     title: "Posture Hold",
@@ -264,6 +280,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "back-extension",
+    issues: ["L1", "L2", "L3", "T1"],
     code: "B2",
     joint: "back",
     title: "Back Extension",
@@ -278,6 +295,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "side-bend",
+    issues: ["L1", "L6", "T2"],
     code: "B3",
     joint: "back",
     title: "Side Bend",
@@ -292,6 +310,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "bird-dog",
+    issues: ["L1", "L2", "L5", "L6", "L7", "L8"],
     code: "B4",
     joint: "back",
     title: "Bird-Dog",
@@ -307,6 +326,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "hip-hinge",
+    issues: ["L1", "L8"],
     code: "B5",
     joint: "back",
     title: "Hip Hinge",
@@ -322,6 +342,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "cat-cow",
+    issues: ["T1", "T2", "T4", "L1", "L6"],
     code: "B6",
     joint: "back",
     title: "Cat-Cow",
@@ -338,6 +359,7 @@ export const REHAB_EXERCISES = [
   // ── SHOULDER ───────────────────────────────────────────────────
   {
     slug: "shoulder-raise",
+    issues: ["S1", "S2", "S7"],
     code: "S1",
     joint: "shoulder",
     title: "Shoulder Raise",
@@ -353,6 +375,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "wall-clock",
+    issues: ["S1", "S2", "S3", "S7", "S10"],
     code: "S2",
     joint: "shoulder",
     title: "Wall-Clock Reach",
@@ -368,6 +391,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "wall-slide",
+    issues: ["T1", "T4"],
     code: "S4",
     joint: "shoulder",
     title: "Wall Slide",
@@ -383,6 +407,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "external-rotation",
+    issues: ["S1", "S2", "S4", "S5", "S7", "S8"],
     code: "S5",
     joint: "shoulder",
     title: "External Rotation (trend)",
@@ -398,6 +423,7 @@ export const REHAB_EXERCISES = [
   },
   {
     slug: "scapular-set",
+    issues: ["C1", "C2", "C3", "S1", "S4", "S6", "S9"],
     code: "S6",
     joint: "shoulder",
     title: "Scapular Set (coarse)",

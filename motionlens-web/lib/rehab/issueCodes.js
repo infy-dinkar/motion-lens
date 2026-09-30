@@ -1,0 +1,100 @@
+// Issue codes from the physio exercise PDF (C1…J4).
+//
+// Each rehab exercise carries a list of these codes in its catalogue
+// entry (`issues`), so the rehab page can show them on cards and filter
+// exercises by issue. Codes are the PDF's own; the region names the
+// part of the body the PDF files the issue under.
+
+/** @typedef {{ code: string, label: string, region: string }} IssueCode */
+
+/** In the PDF's order. @type {IssueCode[]} */
+export const ISSUE_CODES = [
+  { code: "C1", label: "Mechanical / postural neck pain", region: "Cervical" },
+  { code: "C2", label: "Cervical spondylosis", region: "Cervical" },
+  { code: "C3", label: "Cervical radiculopathy", region: "Cervical" },
+  { code: "C4", label: "Whiplash-associated disorder", region: "Cervical" },
+  { code: "C5", label: "Cervicogenic headache", region: "Cervical" },
+  { code: "C6", label: "Acute wry neck / torticollis", region: "Cervical" },
+  { code: "C7", label: "Cervical myelopathy", region: "Cervical" },
+  { code: "S1", label: "Rotator cuff tendinopathy / subacromial pain", region: "Shoulder" },
+  { code: "S2", label: "Rotator cuff tear", region: "Shoulder" },
+  { code: "S3", label: "Adhesive capsulitis (frozen shoulder)", region: "Shoulder" },
+  { code: "S4", label: "Glenohumeral instability", region: "Shoulder" },
+  { code: "S5", label: "Labral tear", region: "Shoulder" },
+  { code: "S6", label: "AC joint sprain / arthritis", region: "Shoulder" },
+  { code: "S7", label: "Glenohumeral OA / post-arthroplasty", region: "Shoulder" },
+  { code: "S8", label: "Biceps tendinopathy", region: "Shoulder" },
+  { code: "S9", label: "Scapular dyskinesis", region: "Shoulder" },
+  { code: "S10", label: "Proximal humerus / clavicle fracture", region: "Shoulder" },
+  { code: "E1", label: "Lateral epicondylalgia (tennis elbow)", region: "Elbow" },
+  { code: "E2", label: "Medial epicondylalgia (golfer's elbow)", region: "Elbow" },
+  { code: "E3", label: "Post-traumatic elbow stiffness", region: "Elbow" },
+  { code: "E4", label: "Distal biceps tendinopathy / repair", region: "Elbow" },
+  { code: "E5", label: "UCL sprain", region: "Elbow" },
+  { code: "E6", label: "Cubital tunnel syndrome", region: "Elbow" },
+  { code: "E7", label: "Elbow OA", region: "Elbow" },
+  { code: "W1", label: "Carpal tunnel syndrome", region: "Wrist & Hand" },
+  { code: "W2", label: "De Quervain's tenosynovitis", region: "Wrist & Hand" },
+  { code: "W3", label: "Wrist fractures", region: "Wrist & Hand" },
+  { code: "W4", label: "Wrist sprain / TFCC injury", region: "Wrist & Hand" },
+  { code: "W5", label: "Trigger finger", region: "Wrist & Hand" },
+  { code: "W6", label: "Hand OA", region: "Wrist & Hand" },
+  { code: "W7", label: "Rheumatoid hand", region: "Wrist & Hand" },
+  { code: "W8", label: "Flexor / extensor tendon repair", region: "Wrist & Hand" },
+  { code: "T1", label: "Postural thoracic pain / hyperkyphosis", region: "Thoracic" },
+  { code: "T2", label: "Thoracic facet / rib dysfunction", region: "Thoracic" },
+  { code: "T3", label: "Scheuermann's / osteoporotic compression fracture", region: "Thoracic" },
+  { code: "T4", label: "Ankylosing spondylitis (axial SpA)", region: "Thoracic" },
+  { code: "T5", label: "Scoliosis", region: "Thoracic" },
+  { code: "L1", label: "Mechanical / non-specific low back pain", region: "Lumbar & SI" },
+  { code: "L2", label: "Lumbar disc herniation / discogenic pain", region: "Lumbar & SI" },
+  { code: "L3", label: "Lumbar radiculopathy / sciatica", region: "Lumbar & SI" },
+  { code: "L4", label: "Lumbar spinal stenosis", region: "Lumbar & SI" },
+  { code: "L5", label: "Spondylolysis / spondylolisthesis", region: "Lumbar & SI" },
+  { code: "L6", label: "Facet joint syndrome", region: "Lumbar & SI" },
+  { code: "L7", label: "SI joint dysfunction", region: "Lumbar & SI" },
+  { code: "L8", label: "Post-op spine", region: "Lumbar & SI" },
+  { code: "L9", label: "Pregnancy-related pelvic girdle pain", region: "Lumbar & SI" },
+  { code: "H1", label: "Hip OA", region: "Hip" },
+  { code: "H2", label: "Greater trochanteric pain syndrome", region: "Hip" },
+  { code: "H3", label: "Femoroacetabular impingement", region: "Hip" },
+  { code: "H4", label: "Hip labral tear", region: "Hip" },
+  { code: "H5", label: "Groin pain / hip flexor or adductor strain", region: "Hip" },
+  { code: "H6", label: "Hamstring strain / proximal hamstring tendinopathy", region: "Hip" },
+  { code: "H7", label: "Post total hip replacement", region: "Hip" },
+  { code: "H8", label: "Hip fracture", region: "Hip" },
+  { code: "H9", label: "Snapping hip / iliopsoas tendinopathy", region: "Hip" },
+  { code: "H10", label: "Piriformis / deep gluteal syndrome", region: "Hip" },
+  { code: "K1", label: "Knee OA", region: "Knee" },
+  { code: "K2", label: "Patellofemoral pain syndrome", region: "Knee" },
+  { code: "K3", label: "ACL tear", region: "Knee" },
+  { code: "K4", label: "Meniscal tear", region: "Knee" },
+  { code: "K5", label: "MCL / LCL sprain", region: "Knee" },
+  { code: "K6", label: "PCL injury", region: "Knee" },
+  { code: "K7", label: "Patellar tendinopathy (jumper's knee)", region: "Knee" },
+  { code: "K8", label: "IT band syndrome", region: "Knee" },
+  { code: "K9", label: "Post total knee replacement", region: "Knee" },
+  { code: "K10", label: "Patellar instability / dislocation", region: "Knee" },
+  { code: "K11", label: "Osgood-Schlatter (adolescent)", region: "Knee" },
+  { code: "A1", label: "Lateral ankle sprain / chronic ankle instability", region: "Ankle & Foot" },
+  { code: "A2", label: "Achilles tendinopathy", region: "Ankle & Foot" },
+  { code: "A3", label: "Achilles rupture", region: "Ankle & Foot" },
+  { code: "A4", label: "Plantar fasciitis / plantar heel pain", region: "Ankle & Foot" },
+  { code: "A5", label: "Ankle fracture", region: "Ankle & Foot" },
+  { code: "A6", label: "Posterior tibial tendon dysfunction / acquired flatfoot", region: "Ankle & Foot" },
+  { code: "A7", label: "Ankle OA", region: "Ankle & Foot" },
+  { code: "A8", label: "Forefoot conditions", region: "Ankle & Foot" },
+  { code: "A9", label: "Medial tibial stress syndrome (shin splints)", region: "Ankle & Foot" },
+  { code: "A10", label: "High ankle (syndesmotic) sprain", region: "Ankle & Foot" },
+  { code: "J1", label: "Myofascial TMD", region: "TMJ" },
+  { code: "J2", label: "Disc displacement", region: "TMJ" },
+  { code: "J3", label: "TMJ hypomobility", region: "TMJ" },
+  { code: "J4", label: "Bruxism-related pain", region: "TMJ" },
+];
+
+const BY_CODE = new Map(ISSUE_CODES.map((i) => [i.code, i]));
+
+/** Code → entry, or null when unknown. */
+export function issueOf(code) {
+  return BY_CODE.get(code) ?? null;
+}
