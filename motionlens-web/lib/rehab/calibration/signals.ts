@@ -92,7 +92,13 @@ export function readCalibSignal(
     case "shoulder_abduction":
       return sided((sd) => computeShoulderAngle("abduction", k, sd));
     case "shoulder_flexion":
-      return sided((sd) => computeShoulderAngle("flexion", k, sd));
+      // The helper is SIGNED by facing direction (-150 facing one way,
+      // +150 the other). The size is the angle; the sign would put a
+      // left-facing patient's calibration in negative numbers.
+      return sided((sd) => {
+        const v = computeShoulderAngle("flexion", k, sd);
+        return v === null ? null : Math.abs(v);
+      });
     case "forearm_rotation_proxy":
       return sided((sd) => computeForearmRotationProxyDeg(kp, sd));
     case "forward_head_offset":

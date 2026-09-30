@@ -147,7 +147,61 @@ const birdDog: Gate = (kp, holdId, side) => {
   return { block: null, debug };
 };
 
+// ── Hip hinge / back extension: which way the trunk leans ─────────
+//
+// Both record the trunk's angle from vertical, and that helper is
+// UNSIGNED — a forward bend and a backward arch read the same. So the
+// range hold checks the direction against the way the face points
+// (nose ahead of the ear): hinge = trunk leans the way the face points,
+// back extension = the other way. Below TRUNK_LEAN_MIN there is no
+// clear lean yet and the gate stays out of the way ("Move further"
+// from the session covers it).
+/** Shoulder-mid ahead of hip-mid by this share of the torso = a lean. */
+const TRUNK_LEAN_MIN = 0.08;
+
+function mid(kp: LiveKeypoint[], a: number, b: number): { x: number; y: number } | null {
+  const pa = ok(kp, a), pb = ok(kp, b);
+  if (pa && pb) return { x: (kp[a].x + kp[b].x) / 2, y: (kp[a].y + kp[b].y) / 2 };
+  if (pa) return kp[a];
+  if (pb) return kp[b];
+  return null;
+}
+
+/** +1 / -1 for the direction the face points along x, or null. */
+function facing(kp: LiveKeypoint[]): number | null {
+  if (!ok(kp, LM.NOSE)) return null;
+  const ear = mid(kp, LM.LEFT_EAR, LM.RIGHT_EAR);
+  if (!ear) return null;
+  const dx = kp[LM.NOSE].x - ear.x;
+  return Math.abs(dx) < 2 ? null : Math.sign(dx);
+}
+
+function trunkGate(want: "forward" | "backward"): Gate {
+  return (kp, holdId) => {
+    if (holdId !== "range") return NONE;
+    const sh = mid(kp, LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER);
+    const hp = mid(kp, LM.LEFT_HIP, LM.RIGHT_HIP);
+    const face = facing(kp);
+    if (!sh || !hp || face === null) return NONE;
+    const torso = Math.hypot(sh.x - hp.x, sh.y - hp.y);
+    if (torso < 1) return NONE;
+    const lean = (sh.x - hp.x) / torso; // + = shoulders toward +x
+    const debug = `lean ${(lean * face).toFixed(2)} (+ = forward) · face ${face > 0 ? "+x" : "-x"}`;
+    if (Math.abs(lean) < TRUNK_LEAN_MIN) return { block: null, debug };
+    const forward = Math.sign(lean) === face;
+    if (want === "forward" && !forward) {
+      return { block: "Other way — hinge FORWARD from the hips", debug };
+    }
+    if (want === "backward" && forward) {
+      return { block: "Other way — arch gently BACKWARD", debug };
+    }
+    return { block: null, debug };
+  };
+}
+
 const GATES: Record<string, Gate> = {
+  "hip-hinge": trunkGate("forward"),
+  "back-extension": trunkGate("backward"),
   "bird-dog": birdDog,
   "external-rotation": externalRotation,
   "pelvic-hold": pelvicHold,

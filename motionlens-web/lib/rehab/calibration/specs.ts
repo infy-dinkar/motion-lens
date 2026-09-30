@@ -126,6 +126,12 @@ export interface CalibrationSpec {
    *  the hold is blocked with "Use your LEFT leg/arm". Off for
    *  exercises where both limbs move together (squats). */
   contralateral?: boolean;
+  /** Which way the range hold must move from rest, when the signal's
+   *  size alone cannot tell good from bad (posture hold: the corrected
+   *  head is LOWER; pushing it further forward also moves the number).
+   *  A range the wrong way is blocked with `wrongWayMessage`. */
+  rangeDirection?: "lower" | "higher";
+  wrongWayMessage?: string;
   /** Anything a wiring engineer needs to know about this row. */
   note?: string;
 }
@@ -246,6 +252,8 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     parts: [W("EAR"), W("SHOULDER"), W("HIP")],
     scaleRef: "torso",
     signal: "forward_head_offset", signalSide: "working", unit: "deg",
+    rangeDirection: "lower",
+    wrongWayMessage: "Other way — tuck your chin in, ear over your shoulder",
     holds: [
       rest("Sit or stand relaxed, as you normally would."),
       range("Tuck your chin and stack your ear over your shoulder — best posture — and hold."),
@@ -258,6 +266,7 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     parts: [W("HIP"), W("SHOULDER"), W("ELBOW")],
     scaleRef: "torso",
     signal: "shoulder_flexion", signalSide: "working", unit: "deg",
+    contralateral: true,
     holds: [
       rest("Back to the wall, arm bent, forearm on the wall."),
       range("Slide the arm up the wall as high as is comfortable, and hold."),

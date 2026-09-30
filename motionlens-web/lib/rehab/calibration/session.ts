@@ -219,10 +219,22 @@ export class CalibrationSession {
         const oth = Math.abs(otherNow - this.restOther);
         extra.push(`own Δ ${own.toFixed(1)} · other Δ ${oth.toFixed(1)}`);
         if (oth >= minDelta && oth > own) {
-          const limb = this.spec.parts.some((p) => p.part === "KNEE" || p.part === "ANKLE" || p.part === "HIP")
-            ? "leg" : "arm";
+          // From the signal, not the parts: wall slide lists the hip
+          // (for the view check) but moves the arm.
+          const limb = /^(shoulder|forearm)_/.test(this.spec.signal) ? "arm" : "leg";
           block = `Use your ${this.side!.toUpperCase()} ${limb}`;
         }
+      }
+    }
+
+    // Range the wrong way (opt-in per spec).
+    if (block === null && hold.id === "range" && value !== null && this.spec.rangeDirection) {
+      const rest = this.restValue();
+      if (rest !== null) {
+        const wrong = this.spec.rangeDirection === "lower"
+          ? value > rest + minDelta / 2
+          : value < rest - minDelta / 2;
+        if (wrong) block = this.spec.wrongWayMessage ?? "Other way";
       }
     }
 
