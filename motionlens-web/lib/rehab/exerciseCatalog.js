@@ -180,7 +180,39 @@ export const REHAB_EXERCISES = [
     icon: Dumbbell,
     iconTone: "text-indigo-500",
     tone: "from-indigo-500/15 to-indigo-500/5",
+  },  {
+    slug: "heel-slides",
+    issues: ["K1", "K3", "K4", "K9"],
+    code: "K8",
+    joint: "knee",
+    title: "Heel Slides",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Lying on the back, floor-level side-on camera: slide the heel toward the buttock, bending the knee as far as is comfortable, pause, slide back out straight. Rep-Count on knee flexion against a personal bend line (85% of the calibrated range). Counts reps, one leg.",
+    patientBody:
+      "Lying down, slide the heel in and out. Counts reps.",
+    icon: Activity,
+    iconTone: "text-indigo-500",
+    tone: "from-indigo-500/15 to-indigo-500/5",
+  },  {
+    slug: "straight-leg-raise",
+    issues: ["K1", "K2", "K3", "K9"],
+    code: "K9",
+    joint: "knee",
+    title: "Straight Leg Raise",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Lying on the back, other knee bent, floor-level side-on camera: tighten the thigh and lift the straight leg to about the other knee's height, hold 2 s, lower slowly. Rep-Count on hip flexion against a personal up line (85% of the calibrated range); a bent knee does not count. Counts reps, one leg. Separate from the SLR assessment.",
+    patientBody:
+      "Lying down, lift the straight leg and hold 2 s. Counts reps.",
+    icon: Activity,
+    iconTone: "text-indigo-500",
+    tone: "from-indigo-500/15 to-indigo-500/5",
   },
+
+
 
   // ── HIP ────────────────────────────────────────────────────────
   {
@@ -276,7 +308,23 @@ export const REHAB_EXERCISES = [
     icon: Dumbbell,
     iconTone: "text-indigo-500",
     tone: "from-indigo-500/15 to-indigo-500/5",
+  },  {
+    slug: "hamstring-stretch",
+    issues: ["H6", "K1", "K2"],
+    code: "H7",
+    joint: "hip",
+    title: "Hamstring Stretch",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Lying on the back with a towel round the foot, floor-level side-on camera: pull the straight leg up until a stretch is felt behind the thigh, hold 30 s, lower. A rep is one held stretch, read from hip flexion against a personal stretch line (85% of the calibrated range); a bent knee does not count. Counts holds, one leg.",
+    patientBody:
+      "Lying down, towel-assisted leg stretch held 30 s. Counts holds.",
+    icon: Activity,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
   },
+
 
   // ── BACK ───────────────────────────────────────────────────────
   {
@@ -453,7 +501,39 @@ export const REHAB_EXERCISES = [
     icon: Dumbbell,
     iconTone: "text-amber-500",
     tone: "from-amber-500/15 to-amber-500/5",
+  },  {
+    slug: "wall-finger-walk",
+    issues: ["S1", "S2", "S3", "S7", "S10"],
+    code: "S8",
+    joint: "shoulder",
+    title: "Wall Finger Walk",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Facing a wall, side-on camera: walk the fingers up the wall as high as is comfortable, hold 3 s, walk back down. Rep-Count on shoulder flexion against a personal up line (85% of the calibrated range). Counts reps, one arm.",
+    patientBody:
+      "Finger-walk up the wall, hold 3 s, back down. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },  {
+    slug: "wand-flexion",
+    issues: ["S1", "S2", "S3", "S7", "S10"],
+    code: "S9",
+    joint: "shoulder",
+    title: "Wand Shoulder Flexion (AAROM)",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Holding a stick in both hands, side-on camera: the good arm pushes the stick up, lifting the working arm forward and overhead; hold 2 s, lower. Rep-Count on the working arm's shoulder flexion against a personal up line (85% of the calibrated range). Counts reps, one arm.",
+    patientBody:
+      "Stick-assisted arm raises overhead, hold 2 s. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
   },
+
+
   {
     slug: "scapular-set",
     issues: ["C1", "C2", "C3", "S1", "S4", "S6", "S9"],
@@ -496,6 +576,53 @@ export const REHAB_EXERCISES = [
       "Seated, knees bent ~90°, lift both heels and lower them — the bent knee slackens the gastrocnemius so the soleus works. Same foot-pitch Rep-Count as Heel Raises, side-on camera. Counts reps.",
     patientBody:
       "Seated heel lifts for the soleus. Counts reps.",
+    icon: Footprints,
+    iconTone: "text-emerald-500",
+    tone: "from-emerald-500/15 to-emerald-500/5",
+  },
+  {
+    slug: "isometric-calf-hold",
+    issues: ["A2", "A3", "A9"],
+    code: "A3",
+    joint: "ankle",
+    title: "Isometric Calf Hold",
+    mechanic: "rep_count",
+    publicBody:
+      "Standing, holding a chair, rise onto the toes and hold still for 10 s, then lower. Both feet together. A rep is one rise held 10 s, read from the foot's pitch against the patient's own flat foot, side-on camera. Counts holds.",
+    patientBody:
+      "Rise onto the toes and hold 10 s. Counts holds.",
+    icon: Footprints,
+    iconTone: "text-emerald-500",
+    tone: "from-emerald-500/15 to-emerald-500/5",
+  },
+  {
+    slug: "eccentric-heel-drops",
+    issues: ["A2", "A3"],
+    code: "A4",
+    joint: "ankle",
+    title: "Eccentric Heel Drops",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Standing side-on on a step edge, rise onto the toes with both legs, then lower the chosen heel slowly (3 s or more) to flat or below. Counts only slow lowerings, timed on the chosen foot's pitch against the patient's own flat foot. Counts reps, one leg.",
+    patientBody:
+      "Rise on both feet, lower slowly on one. Counts slow reps.",
+    icon: Footprints,
+    iconTone: "text-emerald-500",
+    tone: "from-emerald-500/15 to-emerald-500/5",
+  },
+  {
+    slug: "rathleff-heel-raise",
+    issues: ["A4"],
+    code: "A5",
+    joint: "ankle",
+    title: "Rathleff Heel Raise",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Single-leg heel raise with a rolled towel under the toes: rise, hold 2 s at the top, lower over 2 s or more. Side-on camera; a rep needs both the top hold and the slow lowering, read from the chosen foot's pitch against the patient's own resting foot. Counts reps, one leg.",
+    patientBody:
+      "One-leg heel raise, toes on a towel: hold at the top, lower slowly. Counts reps.",
     icon: Footprints,
     iconTone: "text-emerald-500",
     tone: "from-emerald-500/15 to-emerald-500/5",
@@ -557,6 +684,37 @@ export const REHAB_EXERCISES = [
       "Seated side-on, nod the chin down to the chest and tip the head back to look up, returning to neutral each time, back still. Rep-Count on head pitch (ear→nose line) against the patient's own neutral. Counts reps, both directions.",
     patientBody:
       "Chin-down and look-up nods. Counts reps.",
+    icon: Activity,
+    iconTone: "text-sky-500",
+    tone: "from-sky-500/15 to-sky-500/5",
+  },
+  {
+    slug: "upper-trap-levator-stretch",
+    issues: ["C1", "C2", "C5", "C6"],
+    code: "C4",
+    joint: "cervical",
+    title: "Upper Trapezius & Levator Stretch",
+    mechanic: "rep_count",
+    publicBody:
+      "Seated facing the camera, tilt the ear toward the shoulder and hold the stretch on the opposite side of the neck, shoulders level. A rep is one stretch held for 20 s, read from the shoulder→ear line against the patient's own upright reading. Counts held stretches, both sides.",
+    patientBody:
+      "Ear-to-shoulder neck stretch, held 20 s each. Counts holds.",
+    icon: Activity,
+    iconTone: "text-sky-500",
+    tone: "from-sky-500/15 to-sky-500/5",
+  },
+  {
+    slug: "self-snag",
+    issues: ["C1", "C2", "C5"],
+    code: "C5",
+    joint: "cervical",
+    title: "Self-SNAG (Towel)",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Seated facing the camera, towel round the neck: turn the head toward the chosen side while the opposite hand pulls the towel forward, hold 3 s at end range, back to centre. Rep-Count on head rotation toward that side against a facing-forward baseline. Counts reps, one side.",
+    patientBody:
+      "Towel-assisted head turns to one side, held 3 s. Counts reps.",
     icon: Activity,
     iconTone: "text-sky-500",
     tone: "from-sky-500/15 to-sky-500/5",

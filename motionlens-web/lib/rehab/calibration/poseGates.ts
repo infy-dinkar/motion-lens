@@ -303,6 +303,83 @@ const cervicalSideFlex: Gate = (kp, holdId) => {
   return { block: null, debug };
 };
 
+// ── Self-SNAG (one-way rotation) ──────────────────────────────────
+//
+// The calibration signal is the unsigned head turn, so turning the
+// wrong way passed the range hold. On the range hold the nose must sit
+// toward the picked side of the ear midpoint. Raw (unmirrored) frame:
+// the patient's right is image-left, so a turn to the right moves the
+// nose to smaller x (negative ratio). Blocks only past a clear margin,
+// so a slightly off-centre nose at rest never trips it.
+const SNAG_WRONG_WAY_RATIO = 0.25;
+
+const selfSnag: Gate = (kp, holdId, side) => {
+  if (holdId !== "range" || side === null) return NONE;
+  if (![LM.NOSE, LM.LEFT_EAR, LM.RIGHT_EAR].every((i) => ok(kp, i))) return NONE;
+  const earW = Math.abs(kp[LM.LEFT_EAR].x - kp[LM.RIGHT_EAR].x);
+  if (earW < 1) return NONE;
+  const earMid = (kp[LM.LEFT_EAR].x + kp[LM.RIGHT_EAR].x) / 2;
+  const ratio = (kp[LM.NOSE].x - earMid) / (earW / 2);
+  // Positive toward = turned toward the picked side.
+  const toward = side === "right" ? -ratio : ratio;
+  const debug = `nose ratio ${ratio.toFixed(2)} (toward ${side} ${toward.toFixed(2)}, wrong way past ${SNAG_WRONG_WAY_RATIO})`;
+  if (toward < -SNAG_WRONG_WAY_RATIO) {
+    return { block: `Turn your head to your ${side.toUpperCase()}, not the other way`, debug };
+  }
+  return { block: null, debug };
+};
+
+// ── Heel slides ───────────────────────────────────────────────────
+//
+// Lifting the leg off the floor with the knee bent reads the same knee
+// angle as a heel slide. Lying side-on, a heel on the floor sits about
+// as low on screen as the hip; on the range hold the ankle may not rise
+// above the hip by more than HEEL_LIFT_MAX thigh lengths.
+const HEEL_LIFT_MAX = 0.3;
+
+const heelSlides: Gate = (kp, holdId, side) => {
+  if (holdId !== "range" || side === null) return NONE;
+  const H = side === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP;
+  const K = side === "left" ? LM.LEFT_KNEE : LM.RIGHT_KNEE;
+  const A = side === "left" ? LM.LEFT_ANKLE : LM.RIGHT_ANKLE;
+  if (![H, K, A].every((i) => ok(kp, i))) return NONE;
+  const thigh = d(kp, H, K);
+  if (thigh < 1) return NONE;
+  // Image y grows downward: a raised ankle has a SMALLER y than the hip.
+  const lift = (kp[H].y - kp[A].y) / thigh;
+  const debug = `ankle above hip ${lift.toFixed(2)} thighs (max ${HEEL_LIFT_MAX})`;
+  if (lift > HEEL_LIFT_MAX) {
+    return { block: "Keep your heel on the floor — slide it, do not lift", debug };
+  }
+  return { block: null, debug };
+};
+
+// ── Straight leg raise ────────────────────────────────────────────
+//
+// Bending the knee lifts the thigh too, so the hip angle alone would
+// pass a bent-knee lift. On the range hold the working knee must be
+// within SLR_KNEE_BENT_MAX of straight (same limit as the page).
+const SLR_KNEE_BENT_MAX = 20;
+
+const straightLegRaise: Gate = (kp, holdId, side) => {
+  if (holdId !== "range" || side === null) return NONE;
+  const H = side === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP;
+  const K = side === "left" ? LM.LEFT_KNEE : LM.RIGHT_KNEE;
+  const A = side === "left" ? LM.LEFT_ANKLE : LM.RIGHT_ANKLE;
+  if (![H, K, A].every((i) => ok(kp, i))) return NONE;
+  const ax = kp[H].x - kp[K].x, ay = kp[H].y - kp[K].y;
+  const bx = kp[A].x - kp[K].x, by = kp[A].y - kp[K].y;
+  const m = Math.hypot(ax, ay) * Math.hypot(bx, by);
+  if (m < 1) return NONE;
+  const interior = (Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / m))) * 180) / Math.PI;
+  const bend = 180 - interior;
+  const debug = `knee bend ${bend.toFixed(0)}° (max ${SLR_KNEE_BENT_MAX})`;
+  if (bend > SLR_KNEE_BENT_MAX) {
+    return { block: "Keep the knee straight — lift the whole leg", debug };
+  }
+  return { block: null, debug };
+};
+
 // ── Cervical flexion / extension ──────────────────────────────────
 //
 // Leaning the whole trunk forward tips the head too. The trunk (hip →
@@ -328,6 +405,11 @@ const cervicalFlexExt: Gate = (kp, holdId) => {
 const GATES: Record<string, Gate> = {
   "cervical-flexion-extension": cervicalFlexExt,
   "cervical-side-flexion": cervicalSideFlex,
+  "upper-trap-levator-stretch": cervicalSideFlex,
+  "self-snag": selfSnag,
+  "heel-slides": heelSlides,
+  "straight-leg-raise": straightLegRaise,
+  "hamstring-stretch": straightLegRaise,
   "elbow-arom": elbowArom,
   "eccentric-biceps-curl": elbowArom,
   "standing-hamstring-curl": hamstringCurl,

@@ -15,6 +15,11 @@
 // would leave out the first part of the lowering and ask for a much
 // slower rep than intended) and stops when the value reaches the rest
 // end. Going deeper again moves the start.
+//
+// `followThrough` (optional): the return may carry on PAST the rest end
+// (a heel dropping below the step edge). The clock then keeps running
+// to the furthest point reached, and the result is given once the value
+// turns back by `followThrough` or stops moving for `settleMs`.
 
 export interface LoweringResult {
   /** Seconds the return took. */
@@ -34,8 +39,15 @@ export function createLoweringTimer(opts: {
   depth: number;
   minSec: number;
   direction: "up" | "down";
+  followThrough?: number;
+  settleMs?: number;
 }): LoweringTimer {
+  const settleMs = opts.settleMs ?? 400;
   let worked = false;
+  /** Past the rest end, following the return to its furthest point. */
+  let settling = false;
+  let furthest = 0;
+  let furthestMs = 0;
   /** Left the worked end since entering it: a re-entry is a new start. */
   let outside = false;
   /** Deepest value seen in the worked end, and when. */
@@ -44,8 +56,27 @@ export function createLoweringTimer(opts: {
   const inWorked = (v: number) => (opts.direction === "up" ? v < opts.depth : v > opts.top);
   const deeper = (v: number) => (opts.direction === "up" ? v <= extreme : v >= extreme);
   const atRest = (v: number) => (opts.direction === "up" ? v >= opts.top : v <= opts.depth);
+  const beyond = (v: number, ref: number) => (opts.direction === "up" ? v - ref : ref - v);
+  const finish = (endMs: number): LoweringResult => {
+    const sec = (endMs - startMs) / 1000;
+    return { sec, slow: sec >= opts.minSec };
+  };
   return {
     step(value, nowMs) {
+      if (settling) {
+        // Still moving further (by more than noise): extend the clock.
+        if (beyond(value, furthest) > 0.5) {
+          furthest = value;
+          furthestMs = nowMs;
+          return null;
+        }
+        const turned = beyond(furthest, value) >= (opts.followThrough ?? 0);
+        if (turned || nowMs - furthestMs >= settleMs || inWorked(value)) {
+          settling = false;
+          return finish(furthestMs);
+        }
+        return null;
+      }
       if (inWorked(value)) {
         if (!worked || outside || deeper(value)) {
           extreme = value;
@@ -57,14 +88,20 @@ export function createLoweringTimer(opts: {
       }
       if (worked) outside = true;
       if (worked && atRest(value)) {
-        const sec = (nowMs - startMs) / 1000;
         worked = false;
-        return { sec, slow: sec >= opts.minSec };
+        if (opts.followThrough !== undefined) {
+          settling = true;
+          furthest = value;
+          furthestMs = nowMs;
+          return null;
+        }
+        return finish(nowMs);
       }
       return null;
     },
     reset() {
       worked = false;
+      settling = false;
     },
   };
 }

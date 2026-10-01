@@ -20,11 +20,19 @@ import { Inner as BackExtension } from "@/app/rehab/back-extension/page";
 import { Inner as BirdDog } from "@/app/rehab/bird-dog/page";
 import { Inner as Bridge } from "@/app/rehab/bridge/page";
 import { Inner as HeelRaises } from "@/app/rehab/heel-raises/page";
+import { Inner as HeelSlides } from "@/app/rehab/heel-slides/page";
+import { Inner as StraightLegRaise } from "@/app/rehab/straight-leg-raise/page";
+import { Inner as HamstringStretch } from "@/app/rehab/hamstring-stretch/page";
 import { Inner as SeatedSoleusRaise } from "@/app/rehab/seated-soleus-raise/page";
+import { Inner as IsometricCalfHold } from "@/app/rehab/isometric-calf-hold/page";
+import { Inner as EccentricHeelDrops } from "@/app/rehab/eccentric-heel-drops/page";
+import { Inner as RathleffHeelRaise } from "@/app/rehab/rathleff-heel-raise/page";
 import { Inner as CatCow } from "@/app/rehab/cat-cow/page";
 import { Inner as CervicalRotation } from "@/app/rehab/cervical-rotation/page";
 import { Inner as CervicalSideFlexion } from "@/app/rehab/cervical-side-flexion/page";
 import { Inner as CervicalFlexionExtension } from "@/app/rehab/cervical-flexion-extension/page";
+import { Inner as UpperTrapLevatorStretch } from "@/app/rehab/upper-trap-levator-stretch/page";
+import { Inner as SelfSnag } from "@/app/rehab/self-snag/page";
 import { Inner as ElbowArom } from "@/app/rehab/elbow-arom/page";
 import { Inner as EccentricBicepsCurl } from "@/app/rehab/eccentric-biceps-curl/page";
 import { Inner as ExternalRotation } from "@/app/rehab/external-rotation/page";
@@ -46,6 +54,8 @@ import { Inner as StepUp } from "@/app/rehab/step-up/page";
 import { Inner as WallClock } from "@/app/rehab/wall-clock/page";
 import { Inner as WallSit } from "@/app/rehab/wall-sit/page";
 import { Inner as WallSlide } from "@/app/rehab/wall-slide/page";
+import { Inner as WallFingerWalk } from "@/app/rehab/wall-finger-walk/page";
+import { Inner as WandFlexion } from "@/app/rehab/wand-flexion/page";
 import { Inner as WeightShift } from "@/app/rehab/weight-shift/page";
 
 export type RehabExerciseComponent = () => React.ReactElement;
@@ -55,11 +65,19 @@ export const REHAB_EXERCISE_COMPONENTS: Record<string, RehabExerciseComponent> =
   "bird-dog": BirdDog,
   "bridge": Bridge,
   "heel-raises": HeelRaises,
+  "heel-slides": HeelSlides,
+  "straight-leg-raise": StraightLegRaise,
+  "hamstring-stretch": HamstringStretch,
   "seated-soleus-raise": SeatedSoleusRaise,
+  "isometric-calf-hold": IsometricCalfHold,
+  "eccentric-heel-drops": EccentricHeelDrops,
+  "rathleff-heel-raise": RathleffHeelRaise,
   "cat-cow": CatCow,
   "cervical-rotation": CervicalRotation,
   "cervical-side-flexion": CervicalSideFlexion,
   "cervical-flexion-extension": CervicalFlexionExtension,
+  "upper-trap-levator-stretch": UpperTrapLevatorStretch,
+  "self-snag": SelfSnag,
   "elbow-arom": ElbowArom,
   "eccentric-biceps-curl": EccentricBicepsCurl,
   "external-rotation": ExternalRotation,
@@ -81,6 +99,8 @@ export const REHAB_EXERCISE_COMPONENTS: Record<string, RehabExerciseComponent> =
   "wall-clock": WallClock,
   "wall-sit": WallSit,
   "wall-slide": WallSlide,
+  "wall-finger-walk": WallFingerWalk,
+  "wand-flexion": WandFlexion,
   "weight-shift": WeightShift,
 };
 

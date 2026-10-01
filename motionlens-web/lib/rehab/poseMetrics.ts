@@ -490,11 +490,19 @@ export function computeHipAbductionDeg(
  *  Positive = heel above the toe. Reads the foot whose heel and toe
  *  are seen more clearly — side-on, the far foot is mostly hidden.
  *  Null when neither foot is visible. Used by the heel-raise family. */
-export function computeHeelLiftDeg(keypoints: Keypoint[]): number | null {
-  const feet: Array<[number, number]> = [
-    [LM.LEFT_HEEL, LM.LEFT_FOOT_INDEX],
-    [LM.RIGHT_HEEL, LM.RIGHT_FOOT_INDEX],
-  ];
+export function computeHeelLiftDeg(
+  keypoints: Keypoint[],
+  side?: "left" | "right",
+): number | null {
+  // With a side, only that foot is read (single-leg exercises).
+  const feet: Array<[number, number]> = side === "left"
+    ? [[LM.LEFT_HEEL, LM.LEFT_FOOT_INDEX]]
+    : side === "right"
+      ? [[LM.RIGHT_HEEL, LM.RIGHT_FOOT_INDEX]]
+      : [
+        [LM.LEFT_HEEL, LM.LEFT_FOOT_INDEX],
+        [LM.RIGHT_HEEL, LM.RIGHT_FOOT_INDEX],
+      ];
   let best: { heel: Keypoint; toe: Keypoint; score: number } | null = null;
   for (const [h, t] of feet) {
     const heel = keypoints[h];

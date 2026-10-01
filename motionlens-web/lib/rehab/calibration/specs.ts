@@ -216,6 +216,50 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     ],
     note: "Rest is the patient's flat-foot pitch; the page counts reps against it, so camera height and foot shape drop out.",
   },
+  "isometric-calf-hold": {
+    slug: "isometric-calf-hold",
+    view: "side", posture: "standing", sided: false,
+    parts: [A("HIP"), A("KNEE"), A("ANKLE"), A("HEEL"), A("FOOT_INDEX")],
+    scaleRef: "thigh",
+    signal: "heel_lift", signalSide: "none", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Rise up onto your toes",
+    holds: [
+      rest("Stand tall holding a chair, feet flat."),
+      range("Rise up onto your toes, and hold."),
+    ],
+    note: "Same calibration as heel-raises; rest is the flat-foot zero the page times each hold against.",
+  },
+  "eccentric-heel-drops": {
+    slug: "eccentric-heel-drops",
+    view: "side", posture: "standing", sided: true,
+    parts: [W("HIP"), W("KNEE"), W("ANKLE"), W("HEEL"), W("FOOT_INDEX")],
+    scaleRef: "thigh",
+    signal: "heel_lift", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Rise up onto your toes",
+    // No contralateral check: the other leg helps the rise on purpose.
+    holds: [
+      rest("Stand tall holding a rail, feet flat."),
+      range("Rise up onto your toes, and hold."),
+    ],
+    note: "Reads the picked foot only; rest is the flat-foot zero the page times each lowering against.",
+  },
+  "rathleff-heel-raise": {
+    slug: "rathleff-heel-raise",
+    view: "side", posture: "standing", sided: true,
+    parts: [W("HIP"), W("KNEE"), W("ANKLE"), W("HEEL"), W("FOOT_INDEX")],
+    scaleRef: "thigh",
+    signal: "heel_lift", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Rise up onto your toes",
+    // No contralateral check: the other foot is lifted off the floor.
+    holds: [
+      rest("Stand tall holding a chair, toes on the towel, foot flat."),
+      range("Rise up onto your toes, and hold."),
+    ],
+    note: "Reads the picked foot only; rest (on the towel) is the zero for the top hold and the lowering.",
+  },
   "seated-soleus-raise": {
     slug: "seated-soleus-raise",
     view: "side", posture: "seated", sided: false,
@@ -274,6 +318,20 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     ],
     note: "Calibration reads the unsigned nose-offset rotation; the page counts reps on the baseline-corrected rotation captured at go-live.",
   },
+  "self-snag": {
+    slug: "self-snag",
+    view: "frontal", posture: "seated", sided: false,
+    parts: [{ part: "NOSE", side: "any" }, B("EAR"), B("SHOULDER")],
+    scaleRef: "shoulderWidth",
+    signal: "neck_rotation", signalSide: "none", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Turn your head to one side",
+    holds: [
+      rest("Sit tall, facing the camera, towel round your neck, looking straight ahead."),
+      range("Turn your head to the chosen side as far as is comfortable, and hold."),
+    ],
+    note: "Same calibration as cervical-rotation (unsigned rotation); the page counts only turns toward the picked side, each held at end range.",
+  },
   "cervical-side-flexion": {
     slug: "cervical-side-flexion",
     view: "frontal", posture: "seated", sided: false,
@@ -287,6 +345,20 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
       range("Tilt your ear toward your shoulder as far as is comfortable, and hold."),
     ],
     note: "A pose gate keeps the shoulders level, so a shrug does not pass as a head tilt.",
+  },
+  "upper-trap-levator-stretch": {
+    slug: "upper-trap-levator-stretch",
+    view: "frontal", posture: "seated", sided: false,
+    parts: [B("EAR"), B("SHOULDER")],
+    scaleRef: "shoulderWidth",
+    signal: "neck_lateral_flexion", signalSide: "none", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Tilt your ear toward your shoulder",
+    holds: [
+      rest("Sit tall, facing the camera, head upright."),
+      range("Tilt your ear toward your shoulder until you feel the stretch, and hold."),
+    ],
+    note: "Same calibration and shoulders-level gate as cervical-side-flexion; the page counts held stretches.",
   },
   "cervical-flexion-extension": {
     slug: "cervical-flexion-extension",
@@ -386,6 +458,36 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     ],
     note: "Rest is the HABITUAL position, range is the corrected one, so range < rest. Ear must be clear of hair.",
   },
+  "wall-finger-walk": {
+    slug: "wall-finger-walk",
+    view: "side", posture: "standing", sided: true,
+    parts: [W("HIP"), W("SHOULDER"), W("ELBOW")],
+    scaleRef: "torso",
+    signal: "shoulder_flexion", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Walk your fingers UP the wall",
+    contralateral: true,
+    holds: [
+      rest("Face the wall, arm relaxed by your side."),
+      range("Walk your fingers up the wall as high as is comfortable, and hold."),
+    ],
+    note: "The range hold sets the page's personal up line (85% of it).",
+  },
+  "wand-flexion": {
+    slug: "wand-flexion",
+    view: "side", posture: "standing", sided: true,
+    parts: [W("HIP"), W("SHOULDER"), W("ELBOW")],
+    scaleRef: "torso",
+    signal: "shoulder_flexion", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Push the stick UP",
+    // No contralateral check: both arms lift the wand together.
+    holds: [
+      rest("Holding the stick in both hands, arms down."),
+      range("Push the stick up as high as is comfortable, and hold."),
+    ],
+    note: "The range hold sets the page's personal up line (85% of it), as in wall-finger-walk.",
+  },
   "wall-slide": {
     slug: "wall-slide",
     view: "side", posture: "standing", sided: true,
@@ -401,6 +503,51 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
 
   // ── B. Floor — camera low, trunk horizontal
 
+  "heel-slides": {
+    slug: "heel-slides",
+    view: "side", posture: "supine", sided: true,
+    parts: [W("HIP"), W("KNEE"), W("ANKLE")],
+    scaleRef: "thigh",
+    signal: "knee_flexion", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Slide your heel toward your buttock",
+    contralateral: true,
+    holds: [
+      rest("Lie on your back, legs straight. Relax."),
+      range("Slide your heel in toward your buttock as far as is comfortable, and hold."),
+    ],
+    note: "The range hold sets the page's personal bend line (85% of it). A pose gate keeps the heel on the floor. Camera at floor level.",
+  },
+  "straight-leg-raise": {
+    slug: "straight-leg-raise",
+    view: "side", posture: "supine", sided: true,
+    parts: [W("SHOULDER"), W("HIP"), W("KNEE"), W("ANKLE")],
+    scaleRef: "thigh",
+    signal: "hip_flexion", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Lift the straight leg up",
+    contralateral: true,
+    holds: [
+      rest("Lie on your back, chosen leg flat and straight, other knee bent."),
+      range("Lift the straight leg as high as is comfortable, and hold."),
+    ],
+    note: "Rehab exercise, separate from the orthopedic SLR assessment. The range hold sets the page's personal up line (85% of it). A pose gate keeps the knee straight. Camera at floor level.",
+  },
+  "hamstring-stretch": {
+    slug: "hamstring-stretch",
+    view: "side", posture: "supine", sided: true,
+    parts: [W("SHOULDER"), W("HIP"), W("KNEE"), W("ANKLE")],
+    scaleRef: "thigh",
+    signal: "hip_flexion", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Pull the straight leg up with the towel",
+    contralateral: true,
+    holds: [
+      rest("Lie on your back, towel round the chosen foot, leg flat."),
+      range("Pull the straight leg up until you feel the stretch, and hold."),
+    ],
+    note: "Separate from the orthopedic SLR assessment. The range hold sets the page's personal stretch line (85% of it). A pose gate keeps the knee straight. Camera at floor level.",
+  },
   "bridge": {
     slug: "bridge",
     view: "side", posture: "supine", sided: true,

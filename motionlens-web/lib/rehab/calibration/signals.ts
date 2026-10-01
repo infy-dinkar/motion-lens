@@ -101,7 +101,8 @@ export function readCalibSignal(
     case "neck_rotation":
       return computeNeckAngle("rotation", k as Parameters<typeof computeNeckAngle>[1]);
     case "heel_lift":
-      return computeHeelLiftDeg(kp);
+      // Unsided (heel raises) reads the clearer foot; sided reads that foot.
+      return s === null ? computeHeelLiftDeg(kp) : computeHeelLiftDeg(kp, s);
     case "hip_interior":
       return sided((sd) => {
         const f = computeHipAngle("flexion", k, sd);
