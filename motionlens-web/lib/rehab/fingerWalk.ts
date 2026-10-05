@@ -26,8 +26,10 @@ export function fingerWalkLines(rest: unknown, range: unknown): { up: number; do
     ? Math.min(FINGER_WALK.UP_MAX, Math.max(FINGER_WALK.UP_MIN, range * FINGER_WALK.UP_SHARE))
     : FINGER_WALK.UP_DEFAULT;
   const downRaw = typeof rest === "number" ? rest + FINGER_WALK.DOWN_ABOVE_REST : FINGER_WALK.DOWN_DEFAULT;
-  // Keep a clear gap between the two lines.
-  const down = Math.min(downRaw, up - 25);
+  // Keep a clear gap between the two lines, but never below the resting
+  // arm (else a full return never crosses it and only one rep counts).
+  let down = Math.min(downRaw, up - 25);
+  if (typeof rest === "number") down = Math.max(down, rest + 3);
   return { up, down };
 }
 

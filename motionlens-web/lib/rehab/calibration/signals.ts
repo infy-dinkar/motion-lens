@@ -18,6 +18,7 @@ import {
   computeForearmRotationProxyDeg,
   computeForwardHeadOffsetDeg,
   computeHeelLiftDeg,
+  computeShinTiltDeg,
   computeElbowInteriorDeg,
   computeHipAbductionDeg,
   computeHipMidX,
@@ -103,6 +104,8 @@ export function readCalibSignal(
     case "heel_lift":
       // Unsided (heel raises) reads the clearer foot; sided reads that foot.
       return s === null ? computeHeelLiftDeg(kp) : computeHeelLiftDeg(kp, s);
+    case "shin_tilt":
+      return sided((sd) => computeShinTiltDeg(kp, sd));
     case "hip_interior":
       return sided((sd) => {
         const f = computeHipAngle("flexion", k, sd);

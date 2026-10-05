@@ -82,6 +82,8 @@ export type CalibSignal =
   | "hip_interior"
   /** Foot pitch side-on (computeHeelLiftDeg): up as the heel lifts. */
   | "heel_lift"
+  /** Shin lean from vertical side-on (computeShinTiltDeg): ankle dorsiflexion with the heel down. */
+  | "shin_tilt"
   /** 180 − elbow interior angle: 0 straight, up as the elbow bends. */
   | "elbow_flexion"
   /** Head rotation, unsigned (neck-live computeNeckAngle "rotation"). */
@@ -186,6 +188,49 @@ const A = (part: BodyPart): PartReq => ({ part, side: "any" });
 export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
   // ── A. Side-on view — working side toward the camera
 
+  "sit-to-stand": {
+    slug: "sit-to-stand",
+    view: "side", posture: "standing", sided: false,
+    parts: [A("HIP"), A("KNEE"), A("ANKLE")],
+    scaleRef: "thigh",
+    signal: "knee_flexion", signalSide: "any", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Sit down on the chair",
+    holds: [
+      rest("Stand tall in front of the chair."),
+      range("Sit down on the chair, and stay seated."),
+    ],
+    note: "Rehab exercise, separate from the orthopedic sit-to-stand assessment. Reads either knee (whichever is clearer).",
+  },
+  "decline-squat": {
+    slug: "decline-squat",
+    view: "side", posture: "standing", sided: true,
+    parts: [W("HIP"), W("KNEE"), W("ANKLE")],
+    scaleRef: "thigh",
+    signal: "knee_flexion", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Bend the knee — squat down",
+    // No contralateral check: the other leg helps on the way up.
+    holds: [
+      rest("Stand tall, chosen leg nearest the camera."),
+      range("Squat down on the chosen leg as far as is comfortable, and hold."),
+    ],
+    note: "The range hold sets the page's personal depth line (85% of it); the page times each lowering.",
+  },
+  "spanish-squat": {
+    slug: "spanish-squat",
+    view: "side", posture: "standing", sided: false,
+    parts: [A("HIP"), A("KNEE"), A("ANKLE")],
+    scaleRef: "thigh",
+    signal: "knee_flexion", signalSide: "any", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Lean back and squat down",
+    holds: [
+      rest("Stand tall in the strap."),
+      range("Lean back into the strap and squat as deep as is comfortable, and hold."),
+    ],
+    note: "Reads either knee (the clearer one). The range hold sets the page's personal depth line (85% of it).",
+  },
   "squat": {
     slug: "squat",
     view: "side", posture: "standing", sided: true,
@@ -259,6 +304,21 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
       range("Rise up onto your toes, and hold."),
     ],
     note: "Reads the picked foot only; rest (on the towel) is the zero for the top hold and the lowering.",
+  },
+  "calf-wall-stretch": {
+    slug: "calf-wall-stretch",
+    view: "side", posture: "standing", sided: true,
+    parts: [W("KNEE"), W("ANKLE"), W("HEEL"), W("FOOT_INDEX")],
+    scaleRef: "thigh",
+    signal: "shin_tilt", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Lean toward the wall, back heel down",
+    // No contralateral check: the front leg bends as you lean.
+    holds: [
+      rest("Hands on the wall, chosen leg back, stand upright."),
+      range("Lean toward the wall, back heel down, until you feel the calf stretch, and hold."),
+    ],
+    note: "Shin lean of the back leg = ankle dorsiflexion while the heel stays down (pose gate). The range hold sets the page's personal stretch line (85% of it).",
   },
   "seated-soleus-raise": {
     slug: "seated-soleus-raise",
@@ -488,6 +548,21 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     ],
     note: "The range hold sets the page's personal up line (85% of it), as in wall-finger-walk.",
   },
+  "table-slides": {
+    slug: "table-slides",
+    view: "side", posture: "seated", sided: true,
+    parts: [W("HIP"), W("SHOULDER"), W("ELBOW")],
+    scaleRef: "torso",
+    signal: "shoulder_flexion", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Slide the hand forward on the table",
+    contralateral: true,
+    holds: [
+      rest("Sit beside the table, hand on the towel near you."),
+      range("Slide the hand forward as far as is comfortable, and hold."),
+    ],
+    note: "The range hold sets the page's personal line (85% of it).",
+  },
   "wall-slide": {
     slug: "wall-slide",
     view: "side", posture: "standing", sided: true,
@@ -548,6 +623,50 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     ],
     note: "Separate from the orthopedic SLR assessment. The range hold sets the page's personal stretch line (85% of it). A pose gate keeps the knee straight. Camera at floor level.",
   },
+  "single-leg-bridge": {
+    slug: "single-leg-bridge",
+    view: "side", posture: "supine", sided: true,
+    parts: [W("SHOULDER"), W("HIP"), W("KNEE")],
+    scaleRef: "torso",
+    signal: "hip_interior", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Lift your hips",
+    // No contralateral check: the free leg moves with the pelvis.
+    holds: [
+      rest("Lie on your back, chosen knee bent, foot flat, other leg straight. Relax."),
+      range("Lift your hips on the chosen leg, other leg held out straight, and hold."),
+    ],
+    note: "Same hip-interior measure as the bridge page. A pose gate checks the other leg is held out straight.",
+  },
+  "bridge-on-heels": {
+    slug: "bridge-on-heels",
+    view: "side", posture: "supine", sided: false,
+    parts: [A("SHOULDER"), A("HIP"), A("KNEE"), A("ANKLE")],
+    scaleRef: "torso",
+    signal: "hip_interior", signalSide: "any", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Lift your hips",
+    holds: [
+      rest("Lie on your back, heels on the floor further out, toes up. Relax."),
+      range("Dig the heels in and lift your hips, and hold."),
+    ],
+    note: "Same hip-interior measure as the bridge page, either side. A pose gate keeps the heels out (knee only a little bent).",
+  },
+  "knee-to-chest": {
+    slug: "knee-to-chest",
+    view: "side", posture: "supine", sided: true,
+    parts: [W("SHOULDER"), W("HIP"), W("KNEE")],
+    scaleRef: "torso",
+    signal: "hip_flexion", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Pull the knee toward your chest",
+    contralateral: true,
+    holds: [
+      rest("Lie on your back, both legs flat. Relax."),
+      range("Pull the chosen knee toward your chest as far as is comfortable, and hold."),
+    ],
+    note: "The range hold sets the page's personal line (85% of it). The other leg stays flat (contralateral check). Camera at floor level.",
+  },
   "bridge": {
     slug: "bridge",
     view: "side", posture: "supine", sided: true,
@@ -559,6 +678,34 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
       range("Lift your hips as high as is comfortable, and hold."),
     ],
     note: "Records hip INTERIOR (180 - flexion), the page's own metric, so the report's calibration card and clinical metric read in the same numbers. Camera at floor level.",
+  },
+  "childs-pose": {
+    slug: "childs-pose",
+    view: "side", posture: "quadruped", sided: false,
+    parts: [A("SHOULDER"), A("HIP"), A("KNEE")],
+    scaleRef: "torso",
+    signal: "hip_flexion", signalSide: "any", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Sit back toward your heels",
+    holds: [
+      rest("Hands and knees, back flat."),
+      range("Sit back toward your heels, arms forward, and hold."),
+    ],
+    note: "Hip flexion of either side (the clearer one). The range hold sets the page's personal fold line (85% of it).",
+  },
+  "quadruped-rock-back": {
+    slug: "quadruped-rock-back",
+    view: "side", posture: "quadruped", sided: false,
+    parts: [A("SHOULDER"), A("HIP"), A("KNEE")],
+    scaleRef: "torso",
+    signal: "hip_flexion", signalSide: "any", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Rock your hips back toward your heels",
+    holds: [
+      rest("Hands and knees, back flat."),
+      range("Rock back as far as you can keep the back flat, and hold."),
+    ],
+    note: "Same signal as child's pose. The range hold sets the page's personal rock-back line (85% of it).",
   },
   "cat-cow": {
     slug: "cat-cow",

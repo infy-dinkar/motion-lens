@@ -16,6 +16,7 @@ import { LM_LIVE as LM } from "@/lib/pose/landmarks-live";
 import type { HoldSpec } from "@/lib/rehab/calibration/specs";
 import type { Side } from "@/lib/rehab/calibration/signals";
 import { computeShoulderAngle } from "@/lib/biomech/shoulder-live";
+import { computeHeelLiftDeg } from "@/lib/rehab/poseMetrics";
 
 const VIS = 0.35;
 
@@ -380,6 +381,84 @@ const straightLegRaise: Gate = (kp, holdId, side) => {
   return { block: null, debug };
 };
 
+// ── Single-leg bridge ────────────────────────────────────────────
+//
+// A two-leg bridge lifts the hips just as high. On the range hold the
+// OTHER leg must be held out straight: its knee within
+// SLB_FREE_KNEE_MAX of straight. The far leg is often half hidden in a
+// side view; when it is not seen the gate stays out of the way.
+const SLB_FREE_KNEE_MAX = 35;
+
+const singleLegBridge: Gate = (kp, holdId, side) => {
+  if (holdId !== "range" || side === null) return NONE;
+  const o = side === "left" ? "right" : "left";
+  const H = o === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP;
+  const K = o === "left" ? LM.LEFT_KNEE : LM.RIGHT_KNEE;
+  const A = o === "left" ? LM.LEFT_ANKLE : LM.RIGHT_ANKLE;
+  if (![H, K, A].every((i) => ok(kp, i))) return NONE;
+  const ax = kp[H].x - kp[K].x, ay = kp[H].y - kp[K].y;
+  const bx = kp[A].x - kp[K].x, by = kp[A].y - kp[K].y;
+  const m = Math.hypot(ax, ay) * Math.hypot(bx, by);
+  if (m < 1) return NONE;
+  const interior = (Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / m))) * 180) / Math.PI;
+  const bend = 180 - interior;
+  const debug = `other knee bend ${bend.toFixed(0)}° (max ${SLB_FREE_KNEE_MAX})`;
+  if (bend > SLB_FREE_KNEE_MAX) {
+    return { block: "Hold the other leg out straight — lift on one leg", debug };
+  }
+  return { block: null, debug };
+};
+
+// ── Bridge on heels ──────────────────────────────────────────────
+//
+// With the heels walked out the knee is only a little bent; a normal
+// bridge (knee near 90°) is not this exercise. On the range hold the
+// knee of the side seen more clearly must be bent no more than
+// HEEL_BRIDGE_KNEE_MAX.
+const HEEL_BRIDGE_KNEE_MAX = 65;
+
+const bridgeOnHeels: Gate = (kp, holdId) => {
+  if (holdId !== "range") return NONE;
+  let best: { bend: number; score: number } | null = null;
+  for (const s of ["left", "right"] as const) {
+    const H = s === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP;
+    const K = s === "left" ? LM.LEFT_KNEE : LM.RIGHT_KNEE;
+    const A = s === "left" ? LM.LEFT_ANKLE : LM.RIGHT_ANKLE;
+    if (![H, K, A].every((i) => ok(kp, i))) continue;
+    const ax = kp[H].x - kp[K].x, ay = kp[H].y - kp[K].y;
+    const bx = kp[A].x - kp[K].x, by = kp[A].y - kp[K].y;
+    const m = Math.hypot(ax, ay) * Math.hypot(bx, by);
+    if (m < 1) continue;
+    const interior = (Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / m))) * 180) / Math.PI;
+    const score = Math.min(kp[H].score, kp[K].score, kp[A].score);
+    if (!best || score > best.score) best = { bend: 180 - interior, score };
+  }
+  if (!best) return NONE;
+  const debug = `knee bend ${best.bend.toFixed(0)}° (max ${HEEL_BRIDGE_KNEE_MAX})`;
+  if (best.bend > HEEL_BRIDGE_KNEE_MAX) {
+    return { block: "Walk your heels further out — knees only a little bent", debug };
+  }
+  return { block: null, debug };
+};
+
+// ── Calf wall stretch ─────────────────────────────────────────────
+//
+// Leaning forward with the back heel lifted reads the same shin lean as
+// a real stretch. On the range hold the back foot's pitch (heel above
+// toe) must stay under CALF_HEEL_UP_MAX.
+const CALF_HEEL_UP_MAX = 15;
+
+const calfWallStretch: Gate = (kp, holdId, side) => {
+  if (holdId !== "range" || side === null) return NONE;
+  const pitch = computeHeelLiftDeg(kp, side);
+  if (pitch === null) return NONE;
+  const debug = `back foot pitch ${pitch.toFixed(0)}° (max ${CALF_HEEL_UP_MAX})`;
+  if (pitch > CALF_HEEL_UP_MAX) {
+    return { block: "Keep the back heel down on the floor", debug };
+  }
+  return { block: null, debug };
+};
+
 // ── Cervical flexion / extension ──────────────────────────────────
 //
 // Leaning the whole trunk forward tips the head too. The trunk (hip →
@@ -410,6 +489,9 @@ const GATES: Record<string, Gate> = {
   "heel-slides": heelSlides,
   "straight-leg-raise": straightLegRaise,
   "hamstring-stretch": straightLegRaise,
+  "single-leg-bridge": singleLegBridge,
+  "bridge-on-heels": bridgeOnHeels,
+  "calf-wall-stretch": calfWallStretch,
   "elbow-arom": elbowArom,
   "eccentric-biceps-curl": elbowArom,
   "standing-hamstring-curl": hamstringCurl,

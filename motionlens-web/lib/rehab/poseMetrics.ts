@@ -519,6 +519,25 @@ export function computeHeelLiftDeg(
   return (Math.atan2(dy, dx) * 180) / Math.PI;
 }
 
+/** Shin tilt in degrees, seen side-on: the ankle→knee line's lean from
+ *  vertical, unsigned. ~0–5° standing upright; with the heel on the
+ *  floor it rises as the knee travels forward over the foot — that is
+ *  ankle dorsiflexion (calf stretches). Null when either point is not
+ *  seen. */
+export function computeShinTiltDeg(
+  keypoints: Keypoint[],
+  side: "left" | "right",
+): number | null {
+  const k = keypoints[side === "left" ? LM.LEFT_KNEE : LM.RIGHT_KNEE];
+  const a = keypoints[side === "left" ? LM.LEFT_ANKLE : LM.RIGHT_ANKLE];
+  if (!k || !a) return null;
+  if (Math.min(k.score ?? 0, a.score ?? 0) < VIS_THRESHOLD) return null;
+  const dx = k.x - a.x;
+  const dy = a.y - k.y; // image y is down: knee above ankle → dy > 0
+  if (Math.hypot(dx, dy) < 1e-4) return null;
+  return (Math.atan2(Math.abs(dx), Math.abs(dy)) * 180) / Math.PI;
+}
+
 /** Elbow interior angle in degrees (shoulder–elbow–wrist), unsigned:
  *  ~170–180° with the arm straight, ~40–50° fully bent. Null when any
  *  of the three landmarks is not seen. Used by the elbow exercises. */

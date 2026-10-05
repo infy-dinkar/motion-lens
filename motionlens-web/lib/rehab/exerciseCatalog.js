@@ -210,7 +210,38 @@ export const REHAB_EXERCISES = [
     icon: Activity,
     iconTone: "text-indigo-500",
     tone: "from-indigo-500/15 to-indigo-500/5",
+  },  {
+    slug: "decline-squat",
+    issues: ["K7"],
+    code: "K10",
+    joint: "knee",
+    title: "Decline Squat",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Standing side-on on a decline board (or the floor), lower slowly on the chosen leg (3 s or more) to a personal depth line (85% of the calibrated bend), then stand back up with both legs. Counts only slow lowerings, timed on the knee angle. Counts reps, one leg.",
+    patientBody:
+      "Slow single-leg squat down, both legs back up. Counts slow reps.",
+    icon: Activity,
+    iconTone: "text-indigo-500",
+    tone: "from-indigo-500/15 to-indigo-500/5",
+  },  {
+    slug: "spanish-squat",
+    issues: ["K7", "K11"],
+    code: "K11",
+    joint: "knee",
+    title: "Spanish Squat",
+    mechanic: "rep_count",
+    publicBody:
+      "Strap round the back of both knees, tied to something fixed: lean back and squat to a personal depth line (85% of the calibrated bend), hold 45 s, stand up. Side-on camera; a rep is one held squat, read from the clearer knee. Counts holds.",
+    patientBody:
+      "Strap-supported squat held 45 s. Counts holds.",
+    icon: Activity,
+    iconTone: "text-indigo-500",
+    tone: "from-indigo-500/15 to-indigo-500/5",
   },
+
+
 
 
 
@@ -323,7 +354,68 @@ export const REHAB_EXERCISES = [
     icon: Activity,
     iconTone: "text-rose-500",
     tone: "from-rose-500/15 to-rose-500/5",
+  },  {
+    slug: "sit-to-stand",
+    issues: ["H1", "H7", "H8"],
+    code: "H11",
+    joint: "hip",
+    title: "Sit-to-Stand",
+    mechanic: "rep_count",
+    publicBody:
+      "From a firm chair, side-on camera: stand up fully, then sit back down. A rep is a full stand (knee straight for half a second) from sitting, read from the knee angle of the clearer leg. Counts reps. Separate from the sit-to-stand assessment.",
+    patientBody:
+      "Stand up from a chair and sit back down. Counts reps.",
+    icon: Activity,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
+  },  {
+    slug: "single-leg-bridge",
+    issues: ["H3", "H6"],
+    code: "H12",
+    joint: "hip",
+    title: "Single-Leg Bridge",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Lying on the back, floor-level side-on camera: chosen knee bent, foot flat, other leg held out straight; lift the hips, hold 2 s, lower. Rep-Count on the hip interior angle (shoulder–hip–knee), as on the bridge. Counts reps, one leg.",
+    patientBody:
+      "Bridge on one leg, hold 2 s. Counts reps.",
+    icon: Activity,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
+  },  {
+    slug: "bridge-on-heels",
+    issues: ["H6"],
+    code: "H13",
+    joint: "hip",
+    title: "Bridge on Heels",
+    mechanic: "rep_count",
+    publicBody:
+      "Lying on the back, heels on the floor further out than a normal bridge, toes up, floor-level side-on camera: lift the hips and hold 20 s (hamstring isometric). A rep is one held bridge, read from the hip interior angle of the clearer side; knees bent like a normal bridge do not count. Counts holds.",
+    patientBody:
+      "Bridge on the heels, held 20 s. Counts holds.",
+    icon: Activity,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
+  },  {
+    slug: "quadruped-rock-back",
+    issues: ["H3", "H4"],
+    code: "H14",
+    joint: "hip",
+    title: "Quadruped Rock-Back",
+    mechanic: "rep_count",
+    publicBody:
+      "On hands and knees, side-on camera: rock the hips back toward the heels with the back flat, pause, rock forward. Rep-Count on hip flexion of the clearer side against a personal rock-back line (85% of the calibrated range). Counts reps.",
+    patientBody:
+      "Rock back and forward on hands and knees. Counts reps.",
+    icon: Activity,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
   },
+
+
+
+
 
 
   // ── BACK ───────────────────────────────────────────────────────
@@ -419,7 +511,38 @@ export const REHAB_EXERCISES = [
     icon: Spline,
     iconTone: "text-lime-500",
     tone: "from-lime-500/15 to-lime-500/5",
+  },  {
+    slug: "knee-to-chest",
+    issues: ["L4", "L5", "L6"],
+    code: "B7",
+    joint: "back",
+    title: "Knee-to-Chest Stretch",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Lying on the back, floor-level side-on camera: pull the chosen knee toward the chest with both hands, hold 20 s, let it down; the other leg stays flat. A rep is one held stretch, read from hip flexion against a personal line (85% of the calibrated range). Counts holds, one leg.",
+    patientBody:
+      "Lying down, hug one knee to the chest, hold 20 s. Counts holds.",
+    icon: Activity,
+    iconTone: "text-teal-500",
+    tone: "from-teal-500/15 to-teal-500/5",
+  },  {
+    slug: "childs-pose",
+    issues: ["L4", "L6"],
+    code: "B8",
+    joint: "back",
+    title: "Child's Pose",
+    mechanic: "rep_count",
+    publicBody:
+      "From hands and knees, side-on camera: sit back toward the heels, arms forward, chest down; hold 30 s, come back up. A rep is one held stretch, read from hip flexion of the clearer side against a personal fold line (85% of the calibrated range). Counts holds.",
+    patientBody:
+      "Sit back from hands and knees into child's pose, hold 30 s. Counts holds.",
+    icon: Activity,
+    iconTone: "text-teal-500",
+    tone: "from-teal-500/15 to-teal-500/5",
   },
+
+
 
   // ── SHOULDER ───────────────────────────────────────────────────
   {
@@ -531,7 +654,23 @@ export const REHAB_EXERCISES = [
     icon: Dumbbell,
     iconTone: "text-amber-500",
     tone: "from-amber-500/15 to-amber-500/5",
+  },  {
+    slug: "table-slides",
+    issues: ["S2", "S3", "S7", "S10"],
+    code: "S10",
+    joint: "shoulder",
+    title: "Table Slides",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Seated beside a table, side-on camera, hand on a towel: slide the hand forward as far as is comfortable, pause 2 s, slide back. Rep-Count on shoulder flexion against a personal line (85% of the calibrated reach). Counts reps, one arm.",
+    patientBody:
+      "Slide the hand forward on a table, pause, slide back. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
   },
+
 
 
   {
@@ -626,7 +765,23 @@ export const REHAB_EXERCISES = [
     icon: Footprints,
     iconTone: "text-emerald-500",
     tone: "from-emerald-500/15 to-emerald-500/5",
+  },  {
+    slug: "calf-wall-stretch",
+    issues: ["A2", "A4", "A5", "A7", "A9"],
+    code: "A6",
+    joint: "ankle",
+    title: "Calf Wall Stretch",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Hands on a wall, chosen leg back with the heel down, side-on camera: lean in until the calf stretches, hold 30 s (knee straight = gastrocnemius, bent = soleus). A rep is one held stretch, read from the back shin's lean against a personal line (85% of the calibrated range); a lifted heel does not count. Counts holds, one leg.",
+    patientBody:
+      "Wall calf stretch, heel down, held 30 s. Counts holds.",
+    icon: Footprints,
+    iconTone: "text-emerald-500",
+    tone: "from-emerald-500/15 to-emerald-500/5",
   },
+
   {
     slug: "elbow-arom",
     issues: ["E3", "E4", "E7"],

@@ -6,6 +6,9 @@
 // above the resting value (hold 1). Defaults apply when calibration
 // was skipped. A clear gap is kept between the two lines.
 
+/** The "back" line stays at least this far above the resting value. */
+const REST_MARGIN = 3;
+
 export type PersonalLineConfig = {
   share: number;
   min: number;
@@ -25,5 +28,10 @@ export function personalLines(
     ? Math.min(cfg.max, Math.max(cfg.min, range * cfg.share))
     : cfg.defaultUp;
   const downRaw = typeof rest === "number" ? rest + cfg.downAboveRest : cfg.defaultDown;
-  return { up, down: Math.min(downRaw, up - cfg.minGap) };
+  let down = Math.min(downRaw, up - cfg.minGap);
+  // Never below the resting value: with a small range the gap rule could
+  // push it there, and a patient who returns fully to rest would then
+  // never cross it and only the first rep would ever count.
+  if (typeof rest === "number") down = Math.max(down, rest + REST_MARGIN);
+  return { up, down };
 }

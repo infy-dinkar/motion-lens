@@ -27,6 +27,7 @@ import { Inner as SeatedSoleusRaise } from "@/app/rehab/seated-soleus-raise/page
 import { Inner as IsometricCalfHold } from "@/app/rehab/isometric-calf-hold/page";
 import { Inner as EccentricHeelDrops } from "@/app/rehab/eccentric-heel-drops/page";
 import { Inner as RathleffHeelRaise } from "@/app/rehab/rathleff-heel-raise/page";
+import { Inner as CalfWallStretch } from "@/app/rehab/calf-wall-stretch/page";
 import { Inner as CatCow } from "@/app/rehab/cat-cow/page";
 import { Inner as CervicalRotation } from "@/app/rehab/cervical-rotation/page";
 import { Inner as CervicalSideFlexion } from "@/app/rehab/cervical-side-flexion/page";
@@ -48,6 +49,14 @@ import { Inner as ScapularSet } from "@/app/rehab/scapular-set/page";
 import { Inner as ShoulderRaise } from "@/app/rehab/shoulder-raise/page";
 import { Inner as SideBend } from "@/app/rehab/side-bend/page";
 import { Inner as SingleLegSquat } from "@/app/rehab/single-leg-squat/page";
+import { Inner as SitToStand } from "@/app/rehab/sit-to-stand/page";
+import { Inner as DeclineSquat } from "@/app/rehab/decline-squat/page";
+import { Inner as SpanishSquat } from "@/app/rehab/spanish-squat/page";
+import { Inner as SingleLegBridge } from "@/app/rehab/single-leg-bridge/page";
+import { Inner as BridgeOnHeels } from "@/app/rehab/bridge-on-heels/page";
+import { Inner as KneeToChest } from "@/app/rehab/knee-to-chest/page";
+import { Inner as ChildsPose } from "@/app/rehab/childs-pose/page";
+import { Inner as QuadrupedRockBack } from "@/app/rehab/quadruped-rock-back/page";
 import { Inner as StandingHamstringCurl } from "@/app/rehab/standing-hamstring-curl/page";
 import { Inner as Squat } from "@/app/rehab/squat/page";
 import { Inner as StepUp } from "@/app/rehab/step-up/page";
@@ -56,6 +65,7 @@ import { Inner as WallSit } from "@/app/rehab/wall-sit/page";
 import { Inner as WallSlide } from "@/app/rehab/wall-slide/page";
 import { Inner as WallFingerWalk } from "@/app/rehab/wall-finger-walk/page";
 import { Inner as WandFlexion } from "@/app/rehab/wand-flexion/page";
+import { Inner as TableSlides } from "@/app/rehab/table-slides/page";
 import { Inner as WeightShift } from "@/app/rehab/weight-shift/page";
 
 export type RehabExerciseComponent = () => React.ReactElement;
@@ -72,6 +82,7 @@ export const REHAB_EXERCISE_COMPONENTS: Record<string, RehabExerciseComponent> =
   "isometric-calf-hold": IsometricCalfHold,
   "eccentric-heel-drops": EccentricHeelDrops,
   "rathleff-heel-raise": RathleffHeelRaise,
+  "calf-wall-stretch": CalfWallStretch,
   "cat-cow": CatCow,
   "cervical-rotation": CervicalRotation,
   "cervical-side-flexion": CervicalSideFlexion,
@@ -93,6 +104,14 @@ export const REHAB_EXERCISE_COMPONENTS: Record<string, RehabExerciseComponent> =
   "shoulder-raise": ShoulderRaise,
   "side-bend": SideBend,
   "single-leg-squat": SingleLegSquat,
+  "sit-to-stand": SitToStand,
+  "decline-squat": DeclineSquat,
+  "spanish-squat": SpanishSquat,
+  "single-leg-bridge": SingleLegBridge,
+  "bridge-on-heels": BridgeOnHeels,
+  "knee-to-chest": KneeToChest,
+  "childs-pose": ChildsPose,
+  "quadruped-rock-back": QuadrupedRockBack,
   "standing-hamstring-curl": StandingHamstringCurl,
   "squat": Squat,
   "step-up": StepUp,
@@ -101,6 +120,7 @@ export const REHAB_EXERCISE_COMPONENTS: Record<string, RehabExerciseComponent> =
   "wall-slide": WallSlide,
   "wall-finger-walk": WallFingerWalk,
   "wand-flexion": WandFlexion,
+  "table-slides": TableSlides,
   "weight-shift": WeightShift,
 };
 
