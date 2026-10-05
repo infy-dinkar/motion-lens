@@ -239,7 +239,23 @@ export const REHAB_EXERCISES = [
     icon: Activity,
     iconTone: "text-indigo-500",
     tone: "from-indigo-500/15 to-indigo-500/5",
+  },  {
+    slug: "quad-stretch",
+    issues: ["K1", "K2", "K7", "K8", "K11"],
+    code: "K12",
+    joint: "knee",
+    title: "Quad Stretch",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Standing side-on holding a chair: pull the chosen heel toward the buttock, knee pointing down, hold 30 s. A rep is one held stretch, read from knee flexion against a personal line (85% of the calibrated range); a knee lifted forward does not count. Counts holds, one leg.",
+    patientBody:
+      "Standing thigh stretch, heel to buttock, held 30 s. Counts holds.",
+    icon: Activity,
+    iconTone: "text-indigo-500",
+    tone: "from-indigo-500/15 to-indigo-500/5",
   },
+
 
 
 
@@ -411,7 +427,69 @@ export const REHAB_EXERCISES = [
     icon: Activity,
     iconTone: "text-rose-500",
     tone: "from-rose-500/15 to-rose-500/5",
+  },  {
+    slug: "romanian-deadlift",
+    issues: ["H6"],
+    code: "H15",
+    joint: "hip",
+    title: "Romanian Deadlift",
+    mechanic: "rep_count",
+    publicBody:
+      "Standing side-on, knees soft: hinge forward from the hips with the back flat until the hamstrings stretch, pause, stand tall. Rep-Count on trunk tilt (as hip hinge) against a personal hinge line (85% of the calibrated range); knees bent into a squat do not count. Counts reps.",
+    patientBody:
+      "Hip hinge forward with a flat back, stand tall. Counts reps.",
+    icon: Activity,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
+  },  {
+    slug: "hip-flexor-stretch",
+    issues: ["L1", "L5", "L6", "H5", "H9"],
+    code: "H16",
+    joint: "hip",
+    title: "Hip Flexor Stretch",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Half-kneeling, side-on camera, the stretched side's knee down: keep the trunk upright and shift the hips forward until the front of the hip stretches, hold 30 s. A rep is one held stretch, read from the kneeling thigh's extension against a personal line (85% of the calibrated range); a forward trunk lean does not count. Counts holds, one side.",
+    patientBody:
+      "Half-kneeling hip flexor stretch, held 30 s. Counts holds.",
+    icon: Activity,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
+  },  {
+    slug: "single-leg-balance",
+    issues: ["H1", "H4", "H7", "H8", "K3", "K4", "K5", "K6", "K10", "A1", "A3", "A5", "A7", "A10"],
+    code: "H17",
+    joint: "hip",
+    title: "Single-Leg Balance",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Facing the camera, chair within reach: stand on the chosen leg with the other foot lifted, balance 30 s. A rep is one held balance, read from the free ankle's height above the standing ankle; touching down breaks it. Counts holds, one leg. Separate from the single-leg stance assessment.",
+    patientBody:
+      "Balance on one leg for 30 s. Counts holds.",
+    icon: Activity,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
+  },  {
+    slug: "nordic-hamstring-curl",
+    issues: ["H6", "K3"],
+    code: "H18",
+    joint: "hip",
+    title: "Nordic Hamstring Curl",
+    mechanic: "rep_count",
+    publicBody:
+      "Kneeling side-on, heels held down: lean forward from the knees as slowly as possible (3 s or more) with the hips straight, catch with the hands, push back up. Counts only slow lowerings past a personal depth line (85% of the calibrated lean), timed on trunk tilt; bending at the hips does not count. Counts reps.",
+    patientBody:
+      "Slow forward lean from kneeling, hips straight. Counts slow reps.",
+    icon: Activity,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
   },
+
+
+
+
 
 
 
@@ -540,7 +618,53 @@ export const REHAB_EXERCISES = [
     icon: Activity,
     iconTone: "text-teal-500",
     tone: "from-teal-500/15 to-teal-500/5",
+  },  {
+    slug: "mckenzie-press-up",
+    issues: ["L1", "L2", "L3"],
+    code: "B9",
+    joint: "back",
+    title: "McKenzie Press-up",
+    mechanic: "rep_count",
+    publicBody:
+      "Lying face down, floor-level side-on camera: straighten the arms to press the chest up with the hips on the floor, pause, lower. Rep-Count on the trunk's angle from the floor against a personal line (85% of the calibrated range); hips lifted (a plank) do not count. Counts reps.",
+    patientBody:
+      "Face-down press-ups, hips on the floor. Counts reps.",
+    icon: Activity,
+    iconTone: "text-teal-500",
+    tone: "from-teal-500/15 to-teal-500/5",
+  },  {
+    slug: "prone-thoracic-extension",
+    issues: ["T1", "T3", "T4"],
+    code: "B10",
+    joint: "back",
+    title: "Prone Thoracic Extension",
+    mechanic: "rep_count",
+    publicBody:
+      "Lying face down, floor-level side-on camera, arms by the sides: lift the chest a little with the back muscles (no arm push), hold 3 s, lower. Rep-Count on the trunk's angle from the floor against a personal line (85% of the calibrated range); hips lifted do not count. Counts reps.",
+    patientBody:
+      "Face-down chest lifts, no arm push, hold 3 s. Counts reps.",
+    icon: Activity,
+    iconTone: "text-teal-500",
+    tone: "from-teal-500/15 to-teal-500/5",
+  },  {
+    slug: "side-plank",
+    issues: ["L1", "L5", "L7", "L8"],
+    code: "B11",
+    joint: "back",
+    title: "Side Plank",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Lying on the side, front of the body to a floor-level camera, elbow under the shoulder: lift the hips into a straight shoulder–hip–knee line and hold 20 s. A rep is one held plank, read from the straightness of that line; lying flat does not count. Counts holds, one side.",
+    patientBody:
+      "Side plank on the forearm, held 20 s. Counts holds.",
+    icon: Activity,
+    iconTone: "text-teal-500",
+    tone: "from-teal-500/15 to-teal-500/5",
   },
+
+
+
 
 
 
@@ -669,7 +793,38 @@ export const REHAB_EXERCISES = [
     icon: Dumbbell,
     iconTone: "text-amber-500",
     tone: "from-amber-500/15 to-amber-500/5",
+  },  {
+    slug: "rows",
+    issues: ["S1", "S4", "S6", "S9", "T1", "T3"],
+    code: "S11",
+    joint: "shoulder",
+    title: "Rows / Scapular Retraction",
+    mechanic: "rep_count",
+    publicBody:
+      "Standing side-on, arms out front, with a resistance band or no equipment: pull the elbows back past the body, squeeze the shoulder blades, hold 2 s, arms forward. Rep-Count on elbow bend of the clearer arm against a personal line (85% of the calibrated pull); an elbow bent in front of the body does not count. Counts reps.",
+    patientBody:
+      "Rows (band optional), squeeze the shoulder blades 2 s. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },  {
+    slug: "pulley-flexion",
+    issues: ["S3", "S7", "S10"],
+    code: "S12",
+    joint: "shoulder",
+    title: "Pulley-Assisted Flexion",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Seated under an over-door pulley, side-on camera: the good arm pulls the rope so the chosen arm rises forward and up; hold 2 s, lower. Rep-Count on the chosen arm's shoulder flexion against a personal up line (85% of the calibrated range). Counts reps, one arm.",
+    patientBody:
+      "Pulley-assisted arm raises, hold 2 s. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
   },
+
+
 
 
 

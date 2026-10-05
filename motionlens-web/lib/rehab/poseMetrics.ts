@@ -519,6 +519,51 @@ export function computeHeelLiftDeg(
   return (Math.atan2(dy, dx) * 180) / Math.PI;
 }
 
+/** Side-plank body line, from the front: the interior angle at the
+ *  hip-mid between shoulder-mid and knee-mid (180° = shoulder, hip and
+ *  knee in one straight line; lower = hips sagging), and the line's
+ *  lift from horizontal (knee-mid → shoulder-mid). Knees, not ankles:
+ *  the ankles are often lost by the pose model, and the shoulder–hip–
+ *  knee line must be straight in both the full and the bent-knee plank.
+ *  Null when shoulders, hips or knees are not seen. */
+export function computeSidePlankLine(
+  keypoints: Keypoint[],
+): { straight: number; incline: number } | null {
+  const ids = [LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER, LM.LEFT_HIP, LM.RIGHT_HIP, LM.LEFT_KNEE, LM.RIGHT_KNEE];
+  const p = ids.map((i) => keypoints[i]);
+  if (p.some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) return null;
+  const sh = { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 };
+  const hp = { x: (p[2].x + p[3].x) / 2, y: (p[2].y + p[3].y) / 2 };
+  const kn = { x: (p[4].x + p[5].x) / 2, y: (p[4].y + p[5].y) / 2 };
+  const ax = sh.x - hp.x, ay = sh.y - hp.y, bx = kn.x - hp.x, by = kn.y - hp.y;
+  const m = Math.hypot(ax, ay) * Math.hypot(bx, by);
+  if (m < 1e-4) return null;
+  const straight = (Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / m))) * 180) / Math.PI;
+  const lx = sh.x - kn.x, ly = kn.y - sh.y; // shoulder above knee → ly > 0
+  const incline = (Math.atan2(Math.abs(ly), Math.abs(lx)) * 180) / Math.PI;
+  return { straight, incline };
+}
+
+/** Free-foot lift for single-leg balance, as a share of the standing
+ *  leg's length (hip→ankle): how far the OTHER ankle sits above the
+ *  standing ankle on screen. ~0 with both feet down; ~0.1+ with the free
+ *  foot clearly off the floor. Floored at 0. Works from the front or the
+ *  side. Null when either ankle or the standing hip is not seen. */
+export function computeFootLiftRatio(
+  keypoints: Keypoint[],
+  standSide: "left" | "right",
+): number | null {
+  const sh = keypoints[standSide === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP];
+  const sa = keypoints[standSide === "left" ? LM.LEFT_ANKLE : LM.RIGHT_ANKLE];
+  const fa = keypoints[standSide === "left" ? LM.RIGHT_ANKLE : LM.LEFT_ANKLE];
+  if (!sh || !sa || !fa) return null;
+  if (Math.min(sh.score ?? 0, sa.score ?? 0, fa.score ?? 0) < VIS_THRESHOLD) return null;
+  const leg = Math.hypot(sa.x - sh.x, sa.y - sh.y);
+  if (leg < 1) return null;
+  // Image y grows downward: a raised free ankle has the smaller y.
+  return Math.max(0, (sa.y - fa.y) / leg);
+}
+
 /** Shin tilt in degrees, seen side-on: the ankle→knee line's lean from
  *  vertical, unsigned. ~0–5° standing upright; with the heel on the
  *  floor it rises as the knee travels forward over the foot — that is

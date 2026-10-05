@@ -16,7 +16,7 @@ import { LM_LIVE as LM } from "@/lib/pose/landmarks-live";
 import type { HoldSpec } from "@/lib/rehab/calibration/specs";
 import type { Side } from "@/lib/rehab/calibration/signals";
 import { computeShoulderAngle } from "@/lib/biomech/shoulder-live";
-import { computeHeelLiftDeg } from "@/lib/rehab/poseMetrics";
+import { computeHeelLiftDeg, computeSidePlankLine } from "@/lib/rehab/poseMetrics";
 
 const VIS = 0.35;
 
@@ -459,6 +459,165 @@ const calfWallStretch: Gate = (kp, holdId, side) => {
   return { block: null, debug };
 };
 
+// ── Romanian deadlift ────────────────────────────────────────────
+//
+// A squat also tips the trunk forward. In an RDL the knees stay soft:
+// on the range hold the knee of the leg seen more clearly may be bent no
+// more than RDL_KNEE_MAX.
+const RDL_KNEE_MAX = 35;
+
+const rdlKneesSoft: Gate = (kp, holdId) => {
+  if (holdId !== "range") return NONE;
+  let best: { bend: number; score: number } | null = null;
+  for (const s of ["left", "right"] as const) {
+    const H = s === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP;
+    const K = s === "left" ? LM.LEFT_KNEE : LM.RIGHT_KNEE;
+    const A = s === "left" ? LM.LEFT_ANKLE : LM.RIGHT_ANKLE;
+    if (![H, K, A].every((i) => ok(kp, i))) continue;
+    const ax = kp[H].x - kp[K].x, ay = kp[H].y - kp[K].y;
+    const bx = kp[A].x - kp[K].x, by = kp[A].y - kp[K].y;
+    const m = Math.hypot(ax, ay) * Math.hypot(bx, by);
+    if (m < 1) continue;
+    const interior = (Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / m))) * 180) / Math.PI;
+    const score = Math.min(kp[H].score, kp[K].score, kp[A].score);
+    if (!best || score > best.score) best = { bend: 180 - interior, score };
+  }
+  if (!best) return NONE;
+  const debug = `knee bend ${best.bend.toFixed(0)}° (max ${RDL_KNEE_MAX})`;
+  if (best.bend > RDL_KNEE_MAX) {
+    return { block: "Keep the knees only slightly bent — hinge, do not squat", debug };
+  }
+  return { block: null, debug };
+};
+
+// ── Hip flexor stretch (half-kneeling) ───────────────────────────
+//
+// Leaning the trunk forward moves the thigh back without stretching
+// the hip flexor. On the range hold the trunk (hip-mid → shoulder-mid)
+// must stay within HIP_FLEXOR_TRUNK_MAX of vertical.
+const HIP_FLEXOR_TRUNK_MAX = 20;
+
+const hipFlexorStretch: Gate = (kp, holdId) => {
+  if (holdId !== "range") return NONE;
+  const sh = mid(kp, LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER);
+  const hp = mid(kp, LM.LEFT_HIP, LM.RIGHT_HIP);
+  if (!sh || !hp) return NONE;
+  const dx = sh.x - hp.x, dy = hp.y - sh.y;
+  if (Math.hypot(dx, dy) < 1) return NONE;
+  const tilt = (Math.atan2(Math.abs(dx), Math.abs(dy)) * 180) / Math.PI;
+  const debug = `trunk ${tilt.toFixed(0)}° from vertical (max ${HIP_FLEXOR_TRUNK_MAX})`;
+  if (tilt > HIP_FLEXOR_TRUNK_MAX) {
+    return { block: "Keep your trunk upright — move the hips, not the shoulders", debug };
+  }
+  return { block: null, debug };
+};
+
+// ── McKenzie press-up ────────────────────────────────────────────
+//
+// A plank or push-up also lifts the trunk. In a press-up the pelvis
+// stays on the floor: on the range hold the thigh line (hip-mid →
+// knee-mid) must stay within PRESS_UP_HIP_MAX of horizontal.
+const PRESS_UP_HIP_MAX = 20;
+
+const mckenziePressUp: Gate = (kp, holdId) => {
+  if (holdId !== "range") return NONE;
+  const hp = mid(kp, LM.LEFT_HIP, LM.RIGHT_HIP);
+  const kn = mid(kp, LM.LEFT_KNEE, LM.RIGHT_KNEE);
+  if (!hp || !kn) return NONE;
+  const dx = kn.x - hp.x, dy = kn.y - hp.y;
+  if (Math.hypot(dx, dy) < 1) return NONE;
+  const ang = (Math.atan2(Math.abs(dy), Math.abs(dx)) * 180) / Math.PI;
+  const debug = `thigh ${ang.toFixed(0)}° from the floor (max ${PRESS_UP_HIP_MAX})`;
+  if (ang > PRESS_UP_HIP_MAX) {
+    return { block: "Keep your hips on the floor — press up with the arms only", debug };
+  }
+  return { block: null, debug };
+};
+
+// ── Rows ─────────────────────────────────────────────────────────
+//
+// Bending the elbow in front of the body reads the same elbow angle as
+// a row. In a row the elbow ends up BEHIND the shoulder: on the range
+// hold, for the arm seen more clearly, the elbow must sit behind the
+// shoulder (against the facing direction, from nose vs ears).
+const ROW_BEHIND_MIN = 0.05; // in torso lengths
+
+const rows: Gate = (kp, holdId) => {
+  if (holdId !== "range") return NONE;
+  const face = facing(kp);
+  const hp = mid(kp, LM.LEFT_HIP, LM.RIGHT_HIP);
+  if (face === null || !hp) return NONE;
+  let best: { behind: number; score: number } | null = null;
+  for (const s of ["left", "right"] as const) {
+    const S = s === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER;
+    const E = s === "left" ? LM.LEFT_ELBOW : LM.RIGHT_ELBOW;
+    if (!ok(kp, S) || !ok(kp, E)) continue;
+    const torso = Math.hypot(kp[S].x - hp.x, kp[S].y - hp.y);
+    if (torso < 1) continue;
+    // + = elbow behind the shoulder.
+    const behind = (-(kp[E].x - kp[S].x) * face) / torso;
+    const score = Math.min(kp[S].score, kp[E].score);
+    if (!best || score > best.score) best = { behind, score };
+  }
+  if (!best) return NONE;
+  const debug = `elbow ${best.behind.toFixed(2)} torso behind the shoulder (min ${ROW_BEHIND_MIN})`;
+  if (best.behind < ROW_BEHIND_MIN) {
+    return { block: "Pull the elbows back past your body", debug };
+  }
+  return { block: null, debug };
+};
+
+// ── Side plank ───────────────────────────────────────────────────
+//
+// Lying flat on the side is also a fairly straight line. In a side plank
+// the body is lifted on the forearm, so the knee→shoulder line rises
+// from the floor: on the range hold it must be at least
+// SIDE_PLANK_INCLINE_MIN off horizontal.
+const SIDE_PLANK_INCLINE_MIN = 10;
+
+const sidePlank: Gate = (kp, holdId) => {
+  if (holdId !== "range") return NONE;
+  const l = computeSidePlankLine(kp);
+  if (l === null) return NONE;
+  const debug = `incline ${l.incline.toFixed(0)}° (min ${SIDE_PLANK_INCLINE_MIN}) · straight ${l.straight.toFixed(0)}°`;
+  if (l.incline < SIDE_PLANK_INCLINE_MIN) {
+    return { block: "Lift up onto your forearm — hips off the floor", debug };
+  }
+  return { block: null, debug };
+};
+
+// ── Nordic hamstring curl ────────────────────────────────────────
+//
+// Folding at the hips also tips the trunk forward. In a Nordic curl the
+// body stays straight from the knees to the shoulders: on the range hold
+// the hip interior (shoulder–hip–knee) of the clearer side must be at
+// least NORDIC_HIP_MIN.
+const NORDIC_HIP_MIN = 150;
+
+const nordicHipsStraight: Gate = (kp, holdId) => {
+  if (holdId !== "range") return NONE;
+  let best: { interior: number; score: number } | null = null;
+  for (const s of ["left", "right"] as const) {
+    const S = s === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER;
+    const H = s === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP;
+    const K = s === "left" ? LM.LEFT_KNEE : LM.RIGHT_KNEE;
+    if (![S, H, K].every((i) => ok(kp, i))) continue;
+    const ax = kp[S].x - kp[H].x, ay = kp[S].y - kp[H].y;
+    const bx = kp[K].x - kp[H].x, by = kp[K].y - kp[H].y;
+    const m = Math.hypot(ax, ay) * Math.hypot(bx, by);
+    if (m < 1) continue;
+    const interior = (Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / m))) * 180) / Math.PI;
+    const score = Math.min(kp[S].score, kp[H].score, kp[K].score);
+    if (!best || score > best.score) best = { interior, score };
+  }
+  if (!best) return NONE;
+  const debug = `hip ${best.interior.toFixed(0)}° (min ${NORDIC_HIP_MIN})`;
+  if (best.interior < NORDIC_HIP_MIN) {
+    return { block: "Keep the hips straight — lean from the knees, do not bend at the hips", debug };
+  }
+  return { block: null, debug };
+};
+
 // ── Cervical flexion / extension ──────────────────────────────────
 //
 // Leaning the whole trunk forward tips the head too. The trunk (hip →
@@ -492,9 +651,17 @@ const GATES: Record<string, Gate> = {
   "single-leg-bridge": singleLegBridge,
   "bridge-on-heels": bridgeOnHeels,
   "calf-wall-stretch": calfWallStretch,
+  "romanian-deadlift": both(trunkGate("forward"), rdlKneesSoft),
+  "hip-flexor-stretch": hipFlexorStretch,
+  "mckenzie-press-up": mckenziePressUp,
+  "prone-thoracic-extension": mckenziePressUp,
+  "rows": rows,
+  "side-plank": sidePlank,
+  "nordic-hamstring-curl": nordicHipsStraight,
   "elbow-arom": elbowArom,
   "eccentric-biceps-curl": elbowArom,
   "standing-hamstring-curl": hamstringCurl,
+  "quad-stretch": hamstringCurl,
   "hip-hinge": both(sideGate, trunkGate("forward")),
   "posture-hold": sideGate,
   "back-extension": trunkGate("backward"),

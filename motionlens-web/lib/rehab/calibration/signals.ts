@@ -19,6 +19,9 @@ import {
   computeForwardHeadOffsetDeg,
   computeHeelLiftDeg,
   computeShinTiltDeg,
+  computeFootLiftRatio,
+  computeSidePlankLine,
+  computeTrunkAngleFromHorizontal,
   computeElbowInteriorDeg,
   computeHipAbductionDeg,
   computeHipMidX,
@@ -86,6 +89,13 @@ export function readCalibSignal(
       return sided((sd) => computeKneeAngle("flexion", k, sd));
     case "hip_flexion":
       return sided((sd) => computeHipAngle("flexion", k, sd));
+    case "hip_extension":
+      return sided((sd) => {
+        // Signed from the plumb line, forward positive: extension is the
+        // thigh BEHIND it, so flip the sign; standing/kneeling upright ≈ 0.
+        const v = computeHipAngle("flexion_extension", k, sd);
+        return v === null ? null : Math.max(0, -v);
+      });
     case "elbow_flexion":
       return sided((sd) => {
         const a = computeElbowInteriorDeg(kp, sd);
@@ -106,6 +116,14 @@ export function readCalibSignal(
       return s === null ? computeHeelLiftDeg(kp) : computeHeelLiftDeg(kp, s);
     case "shin_tilt":
       return sided((sd) => computeShinTiltDeg(kp, sd));
+    case "foot_lift":
+      return sided((sd) => computeFootLiftRatio(kp, sd));
+    case "trunk_from_horizontal":
+      return computeTrunkAngleFromHorizontal(kp);
+    case "body_line": {
+      const l = computeSidePlankLine(kp);
+      return l === null ? null : l.straight;
+    }
     case "hip_interior":
       return sided((sd) => {
         const f = computeHipAngle("flexion", k, sd);

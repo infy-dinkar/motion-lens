@@ -76,6 +76,8 @@ export type ScaleRef = "thigh" | "torso" | "shoulderWidth" | "hipWidth";
 export type CalibSignal =
   | "knee_flexion"
   | "hip_flexion"
+  /** Thigh behind the plumb line side-on (−computeHipAngle "flexion_extension", floored at 0). */
+  | "hip_extension"
   /** 180 − hip_flexion: the shoulder–hip–knee angle the bridge page
    *  scores and reports, so its calibration card reads in the same
    *  numbers as its clinical metric. */
@@ -84,6 +86,12 @@ export type CalibSignal =
   | "heel_lift"
   /** Shin lean from vertical side-on (computeShinTiltDeg): ankle dorsiflexion with the heel down. */
   | "shin_tilt"
+  /** Free ankle above the standing ankle, share of leg length (computeFootLiftRatio). */
+  | "foot_lift"
+  /** Trunk (hip-mid → shoulder-mid) angle from horizontal (computeTrunkAngleFromHorizontal): prone press-ups. */
+  | "trunk_from_horizontal"
+  /** Side-plank body straightness: shoulder–hip–knee interior at the hip (computeSidePlankLine). */
+  | "body_line"
   /** 180 − elbow interior angle: 0 straight, up as the elbow bends. */
   | "elbow_flexion"
   /** Head rotation, unsigned (neck-live computeNeckAngle "rotation"). */
@@ -434,6 +442,21 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     ],
     note: "A pose gate keeps the trunk upright, so leaning the whole body does not pass as a nod.",
   },
+  "quad-stretch": {
+    slug: "quad-stretch",
+    view: "side", posture: "standing", sided: true,
+    parts: [W("HIP"), W("KNEE"), W("ANKLE")],
+    scaleRef: "thigh",
+    signal: "knee_flexion", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Pull your heel up toward your buttock",
+    // No contralateral check: the standing leg may soften a little.
+    holds: [
+      rest("Stand tall holding a chair, both feet down."),
+      range("Hold the chosen ankle and pull the heel toward your buttock, knee pointing down, and hold."),
+    ],
+    note: "Same thigh-down pose gate as the standing hamstring curl. The range hold sets the page's personal stretch line (85% of it).",
+  },
   "standing-hamstring-curl": {
     slug: "standing-hamstring-curl",
     view: "side", posture: "standing", sided: true,
@@ -483,6 +506,51 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
       range("Straighten the knee as far as you can, and hold."),
     ],
     note: "Camera at knee height. Rest is the BENT position; range is maximum extension, so range < rest.",
+  },
+  "romanian-deadlift": {
+    slug: "romanian-deadlift",
+    view: "side", posture: "standing", sided: false,
+    parts: [A("SHOULDER"), A("HIP"), A("KNEE"), A("ANKLE")],
+    scaleRef: "torso",
+    signal: "trunk_extension", signalSide: "none", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Hinge forward from the hips",
+    holds: [
+      STAND_TALL,
+      range("Hinge forward from the hips, back flat, knees soft, as far as is comfortable — and hold."),
+    ],
+    note: "Same trunk-tilt reading as hip-hinge. Gates: forward lean only, and knees soft (not a squat). The range hold sets the page's personal hinge line (85% of it).",
+  },
+  "hip-flexor-stretch": {
+    slug: "hip-flexor-stretch",
+    // Upright half-kneeling: "seated" gives the right camera messages.
+    view: "side", posture: "seated", sided: true,
+    parts: [W("SHOULDER"), W("HIP"), W("KNEE"), { part: "NOSE", side: "any" }],
+    scaleRef: "torso",
+    signal: "hip_extension", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Shift your hips forward, trunk upright",
+    // No contralateral check: the front leg bends as the hips move forward.
+    holds: [
+      rest("Half-kneeling, chosen knee down, trunk upright, thigh straight down."),
+      range("Shift your hips forward, trunk upright, until the front of the hip stretches, and hold."),
+    ],
+    note: "Hip extension of the kneeling leg from the plumb line. A pose gate keeps the trunk upright. The range hold sets the page's personal stretch line (85% of it).",
+  },
+  "nordic-hamstring-curl": {
+    slug: "nordic-hamstring-curl",
+    // Upright kneeling: "seated" gives the right camera messages.
+    view: "side", posture: "seated", sided: false,
+    parts: [A("SHOULDER"), A("HIP"), A("KNEE")],
+    scaleRef: "torso",
+    signal: "trunk_extension", signalSide: "none", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Lean forward from the knees, hips straight",
+    holds: [
+      rest("Kneel upright, heels held down, body straight from knees to shoulders."),
+      range("Lean forward from the knees, hips straight, as far as you can control, and hold."),
+    ],
+    note: "Trunk tilt (as hip-hinge). A pose gate keeps the hips straight (shoulder–hip–knee in line). No ankle points needed. The range hold sets the page's personal depth line (85% of it).",
   },
   "hip-hinge": {
     slug: "hip-hinge",
@@ -562,6 +630,21 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
       range("Slide the hand forward as far as is comfortable, and hold."),
     ],
     note: "The range hold sets the page's personal line (85% of it).",
+  },
+  "pulley-flexion": {
+    slug: "pulley-flexion",
+    view: "side", posture: "seated", sided: true,
+    parts: [W("HIP"), W("SHOULDER"), W("ELBOW")],
+    scaleRef: "torso",
+    signal: "shoulder_flexion", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Pull the rope so the arm rises forward",
+    // No contralateral check: the other arm pulls the rope on purpose.
+    holds: [
+      rest("Sit under the pulley, rope in both hands, arms down."),
+      range("Pull down with the good arm so the chosen arm rises forward as far as is comfortable, and hold."),
+    ],
+    note: "Like wand-flexion. The range hold sets the page's personal line (85% of it).",
   },
   "wall-slide": {
     slug: "wall-slide",
@@ -707,6 +790,34 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     ],
     note: "Same signal as child's pose. The range hold sets the page's personal rock-back line (85% of it).",
   },
+  "mckenzie-press-up": {
+    slug: "mckenzie-press-up",
+    view: "side", posture: "supine", sided: false,
+    parts: [A("SHOULDER"), A("HIP"), A("KNEE")],
+    scaleRef: "torso",
+    signal: "trunk_from_horizontal", signalSide: "none", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Press your chest up with your arms",
+    holds: [
+      rest("Lie face down, hands under the shoulders, relaxed."),
+      range("Press your chest up with your arms, hips on the floor, and hold."),
+    ],
+    note: "Prone, so posture 'supine' only for the floor-level camera messages. A pose gate keeps the hips on the floor. The range hold sets the page's personal line (85% of it).",
+  },
+  "prone-thoracic-extension": {
+    slug: "prone-thoracic-extension",
+    view: "side", posture: "supine", sided: false,
+    parts: [A("SHOULDER"), A("HIP"), A("KNEE")],
+    scaleRef: "torso",
+    signal: "trunk_from_horizontal", signalSide: "none", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Lift your chest off the floor",
+    holds: [
+      rest("Lie face down, arms by your sides or hands behind the head, relaxed."),
+      range("Lift your chest off the floor with your back muscles, no push from the arms, and hold."),
+    ],
+    note: "Same signal and hips-down gate as the McKenzie press-up; a smaller lift, no arm push. Prone, posture 'supine' only for the floor-level camera messages.",
+  },
   "cat-cow": {
     slug: "cat-cow",
     view: "side", posture: "quadruped", sided: false,
@@ -833,6 +944,20 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     ],
     note: "The page already locks its own baseline from 10 frames; that logic stays exactly as it is. Hold 1 sits in front of it.",
   },
+  "rows": {
+    slug: "rows",
+    view: "side", posture: "standing", sided: false,
+    parts: [A("SHOULDER"), A("ELBOW"), A("WRIST"), A("HIP"), { part: "NOSE", side: "any" }],
+    scaleRef: "torso",
+    signal: "elbow_flexion", signalSide: "any", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Pull your elbows back",
+    holds: [
+      rest("Stand side-on, arms straight out in front (band optional)."),
+      range("Pull your elbows back past your body, squeeze the shoulder blades, and hold."),
+    ],
+    note: "Elbow bend of either arm; a pose gate checks the elbow ends up behind the trunk (a pull, not just a bent elbow). The range hold sets the page's personal line (85% of it).",
+  },
   "scapular-set": {
     slug: "scapular-set",
     view: "back", posture: "standing", sided: false,
@@ -848,6 +973,34 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
 
   // ── E. Frontal view — upper limb
 
+  "single-leg-balance": {
+    slug: "single-leg-balance",
+    view: "frontal", posture: "standing", sided: true,
+    parts: [W("HIP"), B("ANKLE")],
+    scaleRef: "shoulderWidth",
+    signal: "foot_lift", signalSide: "working", unit: "ratio",
+    rangeDirection: "higher",
+    wrongWayMessage: "Lift the other foot off the floor",
+    holds: [
+      rest("Stand tall facing the camera, both feet down, chair nearby."),
+      range("Stand on the chosen leg and lift the other foot off the floor, and hold."),
+    ],
+    note: "Rehab exercise, separate from the orthopedic single-leg stance assessment. The working side is the STANDING leg.",
+  },
+  "side-plank": {
+    slug: "side-plank",
+    view: "frontal", posture: "supine", sided: false,
+    parts: [B("SHOULDER"), B("HIP"), B("KNEE")],
+    scaleRef: "torso",
+    signal: "body_line", signalSide: "none", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Lift your hips into a straight line",
+    holds: [
+      rest("Lie on your side, elbow under the shoulder, hips on the floor."),
+      range("Lift your hips so shoulder, hip and knee make a straight line, and hold."),
+    ],
+    note: "Camera faces the front of the body. A pose gate checks the body is lifted off the floor at an angle (not lying flat). Side picked on the page = the side that is down.",
+  },
   "shoulder-raise": {
     slug: "shoulder-raise",
     view: "frontal", posture: "standing", sided: true,
