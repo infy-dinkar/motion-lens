@@ -519,6 +519,113 @@ export function computeHeelLiftDeg(
   return (Math.atan2(dy, dx) * 180) / Math.PI;
 }
 
+/** Side-on: how far the elbow sits BEHIND its shoulder (against the
+ *  facing direction, taken from the nose vs the ears), as a share of the
+ *  trunk (shoulder → hip) length, floored at 0. ~0 with the elbow level
+ *  with the shoulder, rising as the body moves forward past a fixed arm
+ *  (doorway stretch) or the elbow is drawn back. Null when the face
+ *  direction, shoulder, elbow or hip is not seen. */
+export function computeElbowBehindRatio(
+  keypoints: Keypoint[],
+  side: "left" | "right",
+): number | null {
+  const nose = keypoints[LM.NOSE], le = keypoints[LM.LEFT_EAR], re = keypoints[LM.RIGHT_EAR];
+  const s = keypoints[side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER];
+  const e = keypoints[side === "left" ? LM.LEFT_ELBOW : LM.RIGHT_ELBOW];
+  const h = keypoints[side === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP];
+  const pts = [nose, le, re, s, e, h];
+  if (pts.some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) return null;
+  const earX = (le.x + re.x) / 2;
+  if (Math.abs(nose.x - earX) < 2) return null;
+  const face = Math.sign(nose.x - earX);
+  const torso = Math.hypot(s.x - h.x, s.y - h.y);
+  if (torso < 1) return null;
+  return Math.max(0, (-(e.x - s.x) * face) / torso);
+}
+
+/** Cross-body arm, from the front: how far the working elbow has
+ *  travelled from its own shoulder toward the other shoulder, as a share
+ *  of the shoulder width (horizontal only), floored at 0. ~0 with the
+ *  arm by the side, ~1 with the elbow in front of the other shoulder.
+ *  Null when either shoulder or the elbow is not seen. */
+export function computeArmCrossRatio(
+  keypoints: Keypoint[],
+  side: "left" | "right",
+): number | null {
+  const own = keypoints[side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER];
+  const other = keypoints[side === "left" ? LM.RIGHT_SHOULDER : LM.LEFT_SHOULDER];
+  const e = keypoints[side === "left" ? LM.LEFT_ELBOW : LM.RIGHT_ELBOW];
+  if (!own || !other || !e) return null;
+  if (Math.min(own.score ?? 0, other.score ?? 0, e.score ?? 0) < VIS_THRESHOLD) return null;
+  const width = other.x - own.x;
+  if (Math.abs(width) < 1) return null;
+  return Math.max(0, (e.x - own.x) / width);
+}
+
+/** Wrist height above the same-side shoulder, as a share of the trunk
+ *  (shoulder → hip) length, floored at 0. Side-lying from the front: ~0
+ *  with the arm reaching forward toward the camera, ~1 with the arm
+ *  pointing straight up to the ceiling. Null when the shoulder, wrist or
+ *  hip is not seen. */
+export function computeWristRiseRatio(
+  keypoints: Keypoint[],
+  side: "left" | "right",
+): number | null {
+  const s = keypoints[side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER];
+  const w = keypoints[side === "left" ? LM.LEFT_WRIST : LM.RIGHT_WRIST];
+  const h = keypoints[side === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP];
+  if (!s || !w || !h) return null;
+  if (Math.min(s.score ?? 0, w.score ?? 0, h.score ?? 0) < VIS_THRESHOLD) return null;
+  const torso = Math.hypot(s.x - h.x, s.y - h.y);
+  if (torso < 1) return null;
+  return Math.max(0, (s.y - w.y) / torso);
+}
+
+/** Side-lying external rotation, from the front: the forearm's angle
+ *  (elbow → wrist) from straight DOWN on screen, unsigned. ~0° with the
+ *  hand hanging toward the floor across the belly, ~90° level, up to
+ *  ~150°+ rotated toward the ceiling. Null when the elbow or wrist is not
+ *  seen. */
+export function computeForearmFromDownDeg(
+  keypoints: Keypoint[],
+  side: "left" | "right",
+): number | null {
+  const e = keypoints[side === "left" ? LM.LEFT_ELBOW : LM.RIGHT_ELBOW];
+  const w = keypoints[side === "left" ? LM.LEFT_WRIST : LM.RIGHT_WRIST];
+  if (!e || !w || Math.min(e.score ?? 0, w.score ?? 0) < VIS_THRESHOLD) return null;
+  const dx = w.x - e.x, dy = w.y - e.y; // image y down: hanging → dy > 0
+  if (Math.hypot(dx, dy) < 1e-4) return null;
+  return (Math.atan2(Math.abs(dx), dy) * 180) / Math.PI;
+}
+
+/** Knee spread from the feet end, lying on the back: the horizontal gap
+ *  between the knees as a share of the hip width. ~1 with the legs
+ *  straight down from the hips, rising as one leg slides out. Null when
+ *  the hips or knees are not seen. */
+export function computeKneeSpreadRatio(keypoints: Keypoint[]): number | null {
+  const ids = [LM.LEFT_HIP, LM.RIGHT_HIP, LM.LEFT_KNEE, LM.RIGHT_KNEE];
+  const p = ids.map((i) => keypoints[i]);
+  if (p.some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) return null;
+  const hipW = Math.abs(p[0].x - p[1].x);
+  if (hipW < 1) return null;
+  return Math.abs(p[2].x - p[3].x) / hipW;
+}
+
+/** Clamshell knee opening, from the front: the angle at the hip-mid
+ *  between the two thighs (hip-mid → each knee). ~0–10° knees together,
+ *  rising as the top knee opens. Null when the hips or knees are not
+ *  seen. */
+export function computeKneeOpeningDeg(keypoints: Keypoint[]): number | null {
+  const ids = [LM.LEFT_HIP, LM.RIGHT_HIP, LM.LEFT_KNEE, LM.RIGHT_KNEE];
+  const p = ids.map((i) => keypoints[i]);
+  if (p.some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) return null;
+  const hx = (p[0].x + p[1].x) / 2, hy = (p[0].y + p[1].y) / 2;
+  const ax = p[2].x - hx, ay = p[2].y - hy, bx = p[3].x - hx, by = p[3].y - hy;
+  const m = Math.hypot(ax, ay) * Math.hypot(bx, by);
+  if (m < 1e-4) return null;
+  return (Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / m))) * 180) / Math.PI;
+}
+
 /** Side-plank body line, from the front: the interior angle at the
  *  hip-mid between shoulder-mid and knee-mid (180° = shoulder, hip and
  *  knee in one straight line; lower = hips sagging), and the line's
@@ -528,13 +635,25 @@ export function computeHeelLiftDeg(
  *  Null when shoulders, hips or knees are not seen. */
 export function computeSidePlankLine(
   keypoints: Keypoint[],
+  /** Use only this knee (the top leg) instead of both — for the
+   *  Copenhagen plank, where the bottom leg hangs free. */
+  kneeSide?: "left" | "right",
 ): { straight: number; incline: number } | null {
-  const ids = [LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER, LM.LEFT_HIP, LM.RIGHT_HIP, LM.LEFT_KNEE, LM.RIGHT_KNEE];
+  const ids = [LM.LEFT_SHOULDER, LM.RIGHT_SHOULDER, LM.LEFT_HIP, LM.RIGHT_HIP];
   const p = ids.map((i) => keypoints[i]);
   if (p.some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) return null;
+  const knees = kneeSide === "left"
+    ? [keypoints[LM.LEFT_KNEE]]
+    : kneeSide === "right"
+      ? [keypoints[LM.RIGHT_KNEE]]
+      : [keypoints[LM.LEFT_KNEE], keypoints[LM.RIGHT_KNEE]];
+  if (knees.some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) return null;
   const sh = { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 };
   const hp = { x: (p[2].x + p[3].x) / 2, y: (p[2].y + p[3].y) / 2 };
-  const kn = { x: (p[4].x + p[5].x) / 2, y: (p[4].y + p[5].y) / 2 };
+  const kn = {
+    x: knees.reduce((s, k) => s + k.x, 0) / knees.length,
+    y: knees.reduce((s, k) => s + k.y, 0) / knees.length,
+  };
   const ax = sh.x - hp.x, ay = sh.y - hp.y, bx = kn.x - hp.x, by = kn.y - hp.y;
   const m = Math.hypot(ax, ay) * Math.hypot(bx, by);
   if (m < 1e-4) return null;
@@ -542,6 +661,53 @@ export function computeSidePlankLine(
   const lx = sh.x - kn.x, ly = kn.y - sh.y; // shoulder above knee → ly > 0
   const incline = (Math.atan2(Math.abs(ly), Math.abs(lx)) * 180) / Math.PI;
   return { straight, incline };
+}
+
+/** Single-leg hop: the hopping ankle's rise above its standing height
+ *  (baseline image y, captured while standing on that leg), as a share
+ *  of the leg length (hip → ankle at the baseline). ~0 grounded, rising
+ *  while airborne. Floored at 0. Null when that ankle is not seen. */
+export function computeHopRise(
+  keypoints: Keypoint[],
+  side: "left" | "right",
+  baseline: { ankleY: number; leg: number },
+): number | null {
+  const a = keypoints[side === "left" ? LM.LEFT_ANKLE : LM.RIGHT_ANKLE];
+  if (!a || (a.score ?? 0) < VIS_THRESHOLD || baseline.leg < 1) return null;
+  return Math.max(0, (baseline.ankleY - a.y) / baseline.leg);
+}
+
+/** Standing baseline for computeHopRise: the ankle's image y and the
+ *  hip → ankle length of that leg. Null when either is not seen. */
+export function captureHopBaseline(
+  keypoints: Keypoint[],
+  side: "left" | "right",
+): { ankleY: number; leg: number } | null {
+  const h = keypoints[side === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP];
+  const a = keypoints[side === "left" ? LM.LEFT_ANKLE : LM.RIGHT_ANKLE];
+  if (!h || !a || Math.min(h.score ?? 0, a.score ?? 0) < VIS_THRESHOLD) return null;
+  const leg = Math.hypot(a.x - h.x, a.y - h.y);
+  return leg < 1 ? null : { ankleY: a.y, leg };
+}
+
+/** Star-excursion reach, from the front: the on-screen distance from
+ *  the standing ankle to the reaching ankle, as a share of the standing
+ *  leg's length (hip → ankle). ~0.1–0.2 feet together, rising as the
+ *  free foot reaches out. Reaches straight toward the camera are
+ *  foreshortened. Null when the standing hip or either ankle is not
+ *  seen. */
+export function computeFootReachRatio(
+  keypoints: Keypoint[],
+  standSide: "left" | "right",
+): number | null {
+  const sh = keypoints[standSide === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP];
+  const sa = keypoints[standSide === "left" ? LM.LEFT_ANKLE : LM.RIGHT_ANKLE];
+  const fa = keypoints[standSide === "left" ? LM.RIGHT_ANKLE : LM.LEFT_ANKLE];
+  if (!sh || !sa || !fa) return null;
+  if (Math.min(sh.score ?? 0, sa.score ?? 0, fa.score ?? 0) < VIS_THRESHOLD) return null;
+  const leg = Math.hypot(sa.x - sh.x, sa.y - sh.y);
+  if (leg < 1) return null;
+  return Math.hypot(fa.x - sa.x, fa.y - sa.y) / leg;
 }
 
 /** Free-foot lift for single-leg balance, as a share of the standing

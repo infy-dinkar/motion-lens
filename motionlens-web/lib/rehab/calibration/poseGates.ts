@@ -618,6 +618,54 @@ const nordicHipsStraight: Gate = (kp, holdId) => {
   return { block: null, debug };
 };
 
+// ── Side-lying external rotation ─────────────────────────────────
+//
+// Lifting the whole arm also turns the forearm up. In this exercise the
+// elbow stays on the waist: on the range hold the upper arm (shoulder →
+// elbow) must lie within SLER_ARM_MAX of the trunk line (shoulder → hip).
+const SLER_ARM_MAX = 35;
+
+const sideLyingEr: Gate = (kp, holdId, side) => {
+  if (holdId !== "range" || side === null) return NONE;
+  const S = side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER;
+  const E = side === "left" ? LM.LEFT_ELBOW : LM.RIGHT_ELBOW;
+  const H = side === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP;
+  if (![S, E, H].every((i) => ok(kp, i))) return NONE;
+  const ax = kp[E].x - kp[S].x, ay = kp[E].y - kp[S].y;
+  const bx = kp[H].x - kp[S].x, by = kp[H].y - kp[S].y;
+  const m = Math.hypot(ax, ay) * Math.hypot(bx, by);
+  if (m < 1) return NONE;
+  const ang = (Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / m))) * 180) / Math.PI;
+  const debug = `upper arm ${ang.toFixed(0)}° off the trunk (max ${SLER_ARM_MAX})`;
+  if (ang > SLER_ARM_MAX) {
+    return { block: "Keep the elbow on your waist — turn only the forearm", debug };
+  }
+  return { block: null, debug };
+};
+
+// ── Overhead triceps extension ───────────────────────────────────
+//
+// Bending the elbow with the arm down is a biceps curl. Here the upper
+// arm points up: on the range hold the working elbow must sit above the
+// shoulder by TRICEPS_ELBOW_UP_MIN trunk lengths.
+const TRICEPS_ELBOW_UP_MIN = 0.1;
+
+const tricepsElbowUp: Gate = (kp, holdId, side) => {
+  if (holdId !== "range" || side === null) return NONE;
+  const S = side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER;
+  const E = side === "left" ? LM.LEFT_ELBOW : LM.RIGHT_ELBOW;
+  const H = side === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP;
+  if (![S, E, H].every((i) => ok(kp, i))) return NONE;
+  const torso = d(kp, S, H);
+  if (torso < 1) return NONE;
+  const up = (kp[S].y - kp[E].y) / torso;
+  const debug = `elbow ${up.toFixed(2)} trunk above the shoulder (min ${TRICEPS_ELBOW_UP_MIN})`;
+  if (up < TRICEPS_ELBOW_UP_MIN) {
+    return { block: "Keep the elbow up by your head", debug };
+  }
+  return { block: null, debug };
+};
+
 // ── Cervical flexion / extension ──────────────────────────────────
 //
 // Leaning the whole trunk forward tips the head too. The trunk (hip →
@@ -658,6 +706,8 @@ const GATES: Record<string, Gate> = {
   "rows": rows,
   "side-plank": sidePlank,
   "nordic-hamstring-curl": nordicHipsStraight,
+  "side-lying-er": sideLyingEr,
+  "triceps-extension": tricepsElbowUp,
   "elbow-arom": elbowArom,
   "eccentric-biceps-curl": elbowArom,
   "standing-hamstring-curl": hamstringCurl,
@@ -665,6 +715,7 @@ const GATES: Record<string, Gate> = {
   "hip-hinge": both(sideGate, trunkGate("forward")),
   "posture-hold": sideGate,
   "back-extension": trunkGate("backward"),
+  "seated-thoracic-extension": trunkGate("backward"),
   "bird-dog": birdDog,
   "external-rotation": externalRotation,
   "pelvic-hold": pelvicHold,

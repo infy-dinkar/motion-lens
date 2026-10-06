@@ -25,6 +25,7 @@ import { Inner as StraightLegRaise } from "@/app/rehab/straight-leg-raise/page";
 import { Inner as HamstringStretch } from "@/app/rehab/hamstring-stretch/page";
 import { Inner as SeatedSoleusRaise } from "@/app/rehab/seated-soleus-raise/page";
 import { Inner as IsometricCalfHold } from "@/app/rehab/isometric-calf-hold/page";
+import { Inner as ToeRaises } from "@/app/rehab/toe-raises/page";
 import { Inner as EccentricHeelDrops } from "@/app/rehab/eccentric-heel-drops/page";
 import { Inner as RathleffHeelRaise } from "@/app/rehab/rathleff-heel-raise/page";
 import { Inner as CalfWallStretch } from "@/app/rehab/calf-wall-stretch/page";
@@ -36,6 +37,7 @@ import { Inner as UpperTrapLevatorStretch } from "@/app/rehab/upper-trap-levator
 import { Inner as SelfSnag } from "@/app/rehab/self-snag/page";
 import { Inner as ElbowArom } from "@/app/rehab/elbow-arom/page";
 import { Inner as EccentricBicepsCurl } from "@/app/rehab/eccentric-biceps-curl/page";
+import { Inner as TricepsExtension } from "@/app/rehab/triceps-extension/page";
 import { Inner as ExternalRotation } from "@/app/rehab/external-rotation/page";
 import { Inner as HipAbduction } from "@/app/rehab/hip-abduction/page";
 import { Inner as HipHinge } from "@/app/rehab/hip-hinge/page";
@@ -59,12 +61,30 @@ import { Inner as KneeToChest } from "@/app/rehab/knee-to-chest/page";
 import { Inner as ChildsPose } from "@/app/rehab/childs-pose/page";
 import { Inner as McKenziePressUp } from "@/app/rehab/mckenzie-press-up/page";
 import { Inner as ProneThoracicExtension } from "@/app/rehab/prone-thoracic-extension/page";
+import { Inner as SeatedThoracicExtension } from "@/app/rehab/seated-thoracic-extension/page";
+import { Inner as McGillCurlUp } from "@/app/rehab/mcgill-curl-up/page";
+import { Inner as SciaticNerveSlider } from "@/app/rehab/sciatic-nerve-slider/page";
 import { Inner as SidePlank } from "@/app/rehab/side-plank/page";
+import { Inner as DeadBug } from "@/app/rehab/dead-bug/page";
+import { Inner as OpenBook } from "@/app/rehab/open-book/page";
+import { Inner as ThreadTheNeedle } from "@/app/rehab/thread-the-needle/page";
 import { Inner as QuadrupedRockBack } from "@/app/rehab/quadruped-rock-back/page";
 import { Inner as RomanianDeadlift } from "@/app/rehab/romanian-deadlift/page";
 import { Inner as HipFlexorStretch } from "@/app/rehab/hip-flexor-stretch/page";
 import { Inner as SingleLegBalance } from "@/app/rehab/single-leg-balance/page";
+import { Inner as StarExcursion } from "@/app/rehab/star-excursion/page";
+import { Inner as SingleLegHops } from "@/app/rehab/single-leg-hops/page";
 import { Inner as NordicHamstringCurl } from "@/app/rehab/nordic-hamstring-curl/page";
+import { Inner as Clamshell } from "@/app/rehab/clamshell/page";
+import { Inner as SupineAbductionSlide } from "@/app/rehab/supine-abduction-slide/page";
+import { Inner as SideLyingEr } from "@/app/rehab/side-lying-er/page";
+import { Inner as CrossBodyStretch } from "@/app/rehab/cross-body-stretch/page";
+import { Inner as DoorwayPecStretch } from "@/app/rehab/doorway-pec-stretch/page";
+import { Inner as SerratusWallSlide } from "@/app/rehab/serratus-wall-slide/page";
+import { Inner as ProneIyt } from "@/app/rehab/prone-iyt/page";
+import { Inner as ProneYtw } from "@/app/rehab/prone-ytw/page";
+import { Inner as PiriformisStretch } from "@/app/rehab/piriformis-stretch/page";
+import { Inner as CopenhagenPlank } from "@/app/rehab/copenhagen-plank/page";
 import { Inner as StandingHamstringCurl } from "@/app/rehab/standing-hamstring-curl/page";
 import { Inner as Squat } from "@/app/rehab/squat/page";
 import { Inner as StepUp } from "@/app/rehab/step-up/page";
@@ -90,6 +110,7 @@ export const REHAB_EXERCISE_COMPONENTS: Record<string, RehabExerciseComponent> =
   "hamstring-stretch": HamstringStretch,
   "seated-soleus-raise": SeatedSoleusRaise,
   "isometric-calf-hold": IsometricCalfHold,
+  "toe-raises": ToeRaises,
   "eccentric-heel-drops": EccentricHeelDrops,
   "rathleff-heel-raise": RathleffHeelRaise,
   "calf-wall-stretch": CalfWallStretch,
@@ -101,6 +122,7 @@ export const REHAB_EXERCISE_COMPONENTS: Record<string, RehabExerciseComponent> =
   "self-snag": SelfSnag,
   "elbow-arom": ElbowArom,
   "eccentric-biceps-curl": EccentricBicepsCurl,
+  "triceps-extension": TricepsExtension,
   "external-rotation": ExternalRotation,
   "hip-abduction": HipAbduction,
   "hip-hinge": HipHinge,
@@ -124,12 +146,30 @@ export const REHAB_EXERCISE_COMPONENTS: Record<string, RehabExerciseComponent> =
   "childs-pose": ChildsPose,
   "mckenzie-press-up": McKenziePressUp,
   "prone-thoracic-extension": ProneThoracicExtension,
+  "seated-thoracic-extension": SeatedThoracicExtension,
+  "mcgill-curl-up": McGillCurlUp,
+  "sciatic-nerve-slider": SciaticNerveSlider,
   "side-plank": SidePlank,
+  "dead-bug": DeadBug,
+  "open-book": OpenBook,
+  "thread-the-needle": ThreadTheNeedle,
   "quadruped-rock-back": QuadrupedRockBack,
   "romanian-deadlift": RomanianDeadlift,
   "hip-flexor-stretch": HipFlexorStretch,
   "single-leg-balance": SingleLegBalance,
+  "star-excursion": StarExcursion,
+  "single-leg-hops": SingleLegHops,
   "nordic-hamstring-curl": NordicHamstringCurl,
+  "clamshell": Clamshell,
+  "supine-abduction-slide": SupineAbductionSlide,
+  "side-lying-er": SideLyingEr,
+  "cross-body-stretch": CrossBodyStretch,
+  "doorway-pec-stretch": DoorwayPecStretch,
+  "serratus-wall-slide": SerratusWallSlide,
+  "prone-iyt": ProneIyt,
+  "prone-ytw": ProneYtw,
+  "piriformis-stretch": PiriformisStretch,
+  "copenhagen-plank": CopenhagenPlank,
   "standing-hamstring-curl": StandingHamstringCurl,
   "squat": Squat,
   "step-up": StepUp,

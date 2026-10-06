@@ -20,7 +20,14 @@ import {
   computeHeelLiftDeg,
   computeShinTiltDeg,
   computeFootLiftRatio,
+  computeFootReachRatio,
   computeSidePlankLine,
+  computeKneeOpeningDeg,
+  computeKneeSpreadRatio,
+  computeForearmFromDownDeg,
+  computeWristRiseRatio,
+  computeArmCrossRatio,
+  computeElbowBehindRatio,
   computeTrunkAngleFromHorizontal,
   computeElbowInteriorDeg,
   computeHipAbductionDeg,
@@ -116,10 +123,35 @@ export function readCalibSignal(
       return s === null ? computeHeelLiftDeg(kp) : computeHeelLiftDeg(kp, s);
     case "shin_tilt":
       return sided((sd) => computeShinTiltDeg(kp, sd));
+    case "foot_reach":
+      return sided((sd) => computeFootReachRatio(kp, sd));
     case "foot_lift":
       return sided((sd) => computeFootLiftRatio(kp, sd));
     case "trunk_from_horizontal":
       return computeTrunkAngleFromHorizontal(kp);
+    case "elbow_behind":
+      return sided((sd) => computeElbowBehindRatio(kp, sd));
+    case "arm_cross":
+      return sided((sd) => computeArmCrossRatio(kp, sd));
+    case "wrist_rise":
+      return sided((sd) => computeWristRiseRatio(kp, sd));
+    case "forearm_from_down":
+      return sided((sd) => computeForearmFromDownDeg(kp, sd));
+    case "knee_spread":
+      return computeKneeSpreadRatio(kp);
+    case "knee_opening":
+      return computeKneeOpeningDeg(kp);
+    case "leg_reach": {
+      const l = computeHipAngle("flexion", k, "left");
+      const r = computeHipAngle("flexion", k, "right");
+      const vals = [l, r].filter((v): v is number => v !== null);
+      return vals.length === 0 ? null : 180 - Math.min(...vals);
+    }
+    case "body_line_top":
+      return sided((sd) => {
+        const l = computeSidePlankLine(kp, sd);
+        return l === null ? null : l.straight;
+      });
     case "body_line": {
       const l = computeSidePlankLine(kp);
       return l === null ? null : l.straight;

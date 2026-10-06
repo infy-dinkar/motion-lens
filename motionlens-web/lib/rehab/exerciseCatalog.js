@@ -485,7 +485,71 @@ export const REHAB_EXERCISES = [
     icon: Activity,
     iconTone: "text-rose-500",
     tone: "from-rose-500/15 to-rose-500/5",
+  },  {
+    slug: "clamshell",
+    issues: ["L7", "L9", "H1", "H2", "H3", "H4", "H10", "K2", "K8", "K10"],
+    code: "H19",
+    joint: "hip",
+    title: "Clamshell",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Side-lying, knees bent and feet together, front of the body to a floor-level camera: open the top knee, pause, close. Rep-Count on the angle between the two thighs against a personal line (85% of the calibrated opening). Counts reps, one leg.",
+    patientBody:
+      "Side-lying knee openings, feet together. Counts reps.",
+    icon: Activity,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
+  },  {
+    slug: "piriformis-stretch",
+    issues: ["L3", "L7", "H10"],
+    code: "H20",
+    joint: "hip",
+    title: "Piriformis / Figure-4 Stretch",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Lying on the back, floor-level side-on camera, chosen ankle crossed over the other knee: pull the bottom thigh toward the chest until the crossed hip stretches, hold 30 s. A rep is one held stretch, read from hip flexion against a personal line (85% of the calibrated pull). Counts holds, one side.",
+    patientBody:
+      "Lying figure-4 hip stretch, held 30 s. Counts holds.",
+    icon: Activity,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
+  },  {
+    slug: "copenhagen-plank",
+    issues: ["H5"],
+    code: "H21",
+    joint: "hip",
+    title: "Copenhagen Adductor Plank",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Side plank with the top leg on a bench (knee easier, foot harder), front of the body to a floor-level camera: lift the hips into a straight shoulder–hip–top-knee line and hold 15 s. A rep is one held plank, read from the straightness of that line. Counts holds, one side.",
+    patientBody:
+      "Side plank with the top leg on a bench, held 15 s. Counts holds.",
+    icon: Activity,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
+  },  {
+    slug: "supine-abduction-slide",
+    issues: ["H7", "H8"],
+    code: "H22",
+    joint: "hip",
+    title: "Supine Abduction Slides",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Lying on the back, feet toward a floor-level camera: slide the chosen leg out to the side along the floor, toes up, pause, slide back. Rep-Count on the gap between the knees against a personal line (85% of the calibrated slide). Counts reps, one leg.",
+    patientBody:
+      "Lying down, slide one leg out to the side and back. Counts reps.",
+    icon: Activity,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
   },
+
+
+
+
 
 
 
@@ -661,7 +725,100 @@ export const REHAB_EXERCISES = [
     icon: Activity,
     iconTone: "text-teal-500",
     tone: "from-teal-500/15 to-teal-500/5",
+  },  {
+    slug: "dead-bug",
+    issues: ["L1", "L5", "L7", "L8", "L9"],
+    code: "B12",
+    joint: "back",
+    title: "Dead Bug",
+    mechanic: "rep_count",
+    publicBody:
+      "Lying on the back, arms up, hips and knees at 90°, floor-level side-on camera: reach one leg out long (opposite arm overhead) with the low back flat, pause, return; alternate. Rep-Count on the more extended leg's hip angle against a personal reach line (85% of the calibrated reach). Counts reps, both legs.",
+    patientBody:
+      "Lying on the back, reach one leg out at a time. Counts reps.",
+    icon: Activity,
+    iconTone: "text-teal-500",
+    tone: "from-teal-500/15 to-teal-500/5",
+  },  {
+    slug: "open-book",
+    issues: ["T1", "T2", "T4"],
+    code: "B13",
+    joint: "back",
+    title: "Open Book Rotation",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Side-lying, knees bent, front of the body to a floor-level camera: open the top arm up toward the ceiling and over, eyes on the hand, pause 2 s, close. Counts the arm sweeping up past a fixed height above the shoulder (the spine rotation itself is not measured in 2D). Counts reps, one side.",
+    patientBody:
+      "Side-lying upper-back rotation, arm opens like a book. Counts reps.",
+    icon: Activity,
+    iconTone: "text-teal-500",
+    tone: "from-teal-500/15 to-teal-500/5",
+  },  {
+    slug: "thread-the-needle",
+    issues: ["T1", "T2"],
+    code: "B14",
+    joint: "back",
+    title: "Thread the Needle",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "On hands and knees, side-on camera, the moving arm nearest it: thread the hand under the other arm, then turn and open it up toward the ceiling, pause 2 s, thread back. Counts the arm opening up past a fixed height above the shoulder (the spine rotation itself is not measured in 2D). Counts reps, one arm.",
+    patientBody:
+      "Hands-and-knees upper-back rotation, arm threads under and opens up. Counts reps.",
+    icon: Activity,
+    iconTone: "text-teal-500",
+    tone: "from-teal-500/15 to-teal-500/5",
+  },  {
+    slug: "seated-thoracic-extension",
+    issues: ["S1", "S9", "T1"],
+    code: "B15",
+    joint: "back",
+    title: "Seated Thoracic Extension",
+    mechanic: "rep_count",
+    publicBody:
+      "Sitting tall on a chair, side-on camera, hands behind the head: arch the upper back backward over the chair back, hold 2 s, sit tall. Rep-Count on trunk tilt (as back extension) against a personal line (85% of the calibrated arch); leaning forward does not count. Counts reps.",
+    patientBody:
+      "Seated upper-back arches over the chair back. Counts reps.",
+    icon: Activity,
+    iconTone: "text-teal-500",
+    tone: "from-teal-500/15 to-teal-500/5",
+  },  {
+    slug: "mcgill-curl-up",
+    issues: ["L1", "L2", "L5", "L8"],
+    code: "B16",
+    joint: "back",
+    title: "McGill Curl-Up",
+    mechanic: "rep_count",
+    publicBody:
+      "Lying on the back, one knee bent, hands under the low back, floor-level side-on camera: lift the head and shoulders a little, neck straight, hold 8 s, lower. Rep-Count on the trunk's angle from the floor against a small personal line (85% of the calibrated lift). Counts reps.",
+    patientBody:
+      "Small head-and-shoulder lift on the back, held 8 s. Counts reps.",
+    icon: Activity,
+    iconTone: "text-teal-500",
+    tone: "from-teal-500/15 to-teal-500/5",
+  },  {
+    slug: "sciatic-nerve-slider",
+    issues: ["L3", "L8"],
+    code: "B17",
+    joint: "back",
+    title: "Sciatic Nerve Slider",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Seated, side-on camera: straighten the chosen knee while looking up, bend it back while bringing the chin down. Rep-Count on knee straightness against a personal line (85% of the calibrated straightening); chin down with the knee straight (a tensioner) does not count. Counts reps, one leg.",
+    patientBody:
+      "Seated nerve glide: knee straight + look up, knee bent + chin down. Counts reps.",
+    icon: Activity,
+    iconTone: "text-teal-500",
+    tone: "from-teal-500/15 to-teal-500/5",
   },
+
+
+
+
+
+
 
 
 
@@ -822,7 +979,101 @@ export const REHAB_EXERCISES = [
     icon: Dumbbell,
     iconTone: "text-amber-500",
     tone: "from-amber-500/15 to-amber-500/5",
+  },  {
+    slug: "side-lying-er",
+    issues: ["S1", "S2", "S4"],
+    code: "S13",
+    joint: "shoulder",
+    title: "Side-Lying External Rotation",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Side-lying, front of the body to a floor-level camera, top elbow bent 90° on the waist: rotate the hand up toward the ceiling, pause, lower. Rep-Count on the forearm's angle from straight down against a personal line (85% of the calibrated rotation); lifting the elbow does not count. Counts reps, one arm.",
+    patientBody:
+      "Side-lying shoulder rotations, elbow on the waist. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },  {
+    slug: "cross-body-stretch",
+    issues: ["S1", "S3", "S5"],
+    code: "S14",
+    joint: "shoulder",
+    title: "Cross-Body Shoulder Stretch",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Facing the camera: pull the chosen arm across the chest with the other hand until the back of the shoulder stretches, hold 30 s. A rep is one held stretch, read from how far the elbow crosses toward the other shoulder against a personal line (85% of the calibrated range). Counts holds, one arm. (The sleeper stretch is not covered.)",
+    patientBody:
+      "Arm-across-the-chest shoulder stretch, held 30 s. Counts holds.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },  {
+    slug: "serratus-wall-slide",
+    issues: ["S1", "S4", "S6", "S9"],
+    code: "S15",
+    joint: "shoulder",
+    title: "Serratus Wall Slide",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Facing a wall, side-on camera, forearms on the wall at shoulder height: slide the forearms up, shoulder blades moving forward and up, pause 2 s, slide down. Rep-Count on shoulder flexion against a personal line (85% of the calibrated slide). Counts reps.",
+    patientBody:
+      "Forearms-on-the-wall slides up and down. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },  {
+    slug: "prone-ytw",
+    issues: ["C1", "C2"],
+    code: "S16",
+    joint: "shoulder",
+    title: "Prone Y-T-W",
+    mechanic: "rep_count",
+    publicBody:
+      "Face down, floor-level side-on camera: lift both arms off the floor in the Y, T and W shapes, thumbs up, shoulder blades squeezed, hold 2 s, lower. Counts arm lifts past a fixed height held 2 s (the shape itself is not recognised). Counts reps.",
+    patientBody:
+      "Face-down arm lifts in Y, T and W shapes, hold 2 s. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },  {
+    slug: "prone-iyt",
+    issues: ["S1", "S4", "S9"],
+    code: "S17",
+    joint: "shoulder",
+    title: "Prone I-Y-T",
+    mechanic: "rep_count",
+    publicBody:
+      "Face down, floor-level side-on camera: lift both arms off the floor in the I, Y and T shapes, thumbs up, shoulder blades squeezed, hold 2 s, lower. Counts arm lifts past a fixed height held 2 s (the shape itself is not recognised). Counts reps.",
+    patientBody:
+      "Face-down arm lifts in I, Y and T shapes, hold 2 s. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },  {
+    slug: "doorway-pec-stretch",
+    issues: ["S1", "S9"],
+    code: "S18",
+    joint: "shoulder",
+    title: "Doorway Pec Stretch",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "In a doorway, side-on camera, forearm on the frame with the elbow at shoulder height: step or lean forward until the chest stretches, hold 30 s. A rep is one held stretch, read from how far the elbow sits behind the shoulder against a personal line (85% of the calibrated lean). Counts holds, one arm.",
+    patientBody:
+      "Doorway chest stretch, held 30 s. Counts holds.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
   },
+
+
+
+
+
+
 
 
 
@@ -935,7 +1186,54 @@ export const REHAB_EXERCISES = [
     icon: Footprints,
     iconTone: "text-emerald-500",
     tone: "from-emerald-500/15 to-emerald-500/5",
+  },  {
+    slug: "toe-raises",
+    issues: ["A9"],
+    code: "A7",
+    joint: "ankle",
+    title: "Toe Raises (Tibialis Anterior)",
+    mechanic: "rep_count",
+    publicBody:
+      "Standing or sitting side-on, feet flat: keep the heels down and lift the toes and front of the feet toward the shins, pause, lower. Rep-Count on the foot's pitch below the patient's own flat foot (heel raises the other way). Counts reps.",
+    patientBody:
+      "Heels down, lift the toes up. Counts reps.",
+    icon: Footprints,
+    iconTone: "text-emerald-500",
+    tone: "from-emerald-500/15 to-emerald-500/5",
+  },  {
+    slug: "star-excursion",
+    issues: ["A1", "A10"],
+    code: "A8",
+    joint: "ankle",
+    title: "Star Excursion Balance",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Standing on the chosen leg, facing the camera: reach the free foot as far as possible in different directions, touch lightly, return to the centre. Rep-Count on the distance between the ankles (share of leg length) against a personal line (85% of the calibrated reach); directions are not recognised. Counts reaches, one standing leg.",
+    patientBody:
+      "Stand on one leg and reach the other foot out in a star. Counts reaches.",
+    icon: Footprints,
+    iconTone: "text-emerald-500",
+    tone: "from-emerald-500/15 to-emerald-500/5",
+  },  {
+    slug: "single-leg-hops",
+    issues: ["A1", "A2", "A3", "A10"],
+    code: "A9",
+    joint: "ankle",
+    title: "Single-Leg Hops",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Side-on camera, standing on the chosen leg with the other foot up: small hops on the spot, landing softly on the same leg. Counts each take-off and landing from the hopping ankle's rise above its standing height; the other foot touching down does not count. Counts reps, one leg. Separate from the single-leg hop test.",
+    patientBody:
+      "Small hops on one leg. Counts hops.",
+    icon: Footprints,
+    iconTone: "text-emerald-500",
+    tone: "from-emerald-500/15 to-emerald-500/5",
   },
+
+
+
 
   {
     slug: "elbow-arom",
@@ -952,7 +1250,23 @@ export const REHAB_EXERCISES = [
     icon: Dumbbell,
     iconTone: "text-amber-500",
     tone: "from-amber-500/15 to-amber-500/5",
+  },  {
+    slug: "triceps-extension",
+    issues: ["E3", "E4", "E7"],
+    code: "E2",
+    joint: "elbow",
+    title: "Overhead Triceps Extension",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Side-on, arm raised overhead with the elbow up: bend the elbow to lower the hand behind the head, then straighten. Rep-Count on elbow bend against a personal line (85% of the calibrated bend); a bend with the arm down does not count. Counts reps, one arm.",
+    patientBody:
+      "Overhead elbow bends and straightens. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
   },
+
   {
     slug: "cervical-rotation",
     issues: ["C1", "C2", "C4", "C6"],
