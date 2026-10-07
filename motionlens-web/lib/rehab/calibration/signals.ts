@@ -7,8 +7,9 @@
 // and with each other across visits.
 //
 // Nothing is computed here that is not already computed somewhere in
-// lib/rehab/poseMetrics.ts or lib/biomech/*-live.ts.
+// lib/rehab/poseMetrics.ts, lib/rehab/ankleMetrics.ts or lib/biomech/*-live.ts.
 
+import { computeAnklePumpDeg } from "@/lib/rehab/ankleMetrics";
 import type { LiveKeypoint } from "@/hooks/usePoseDetectionLive";
 import { computeKneeAngle } from "@/lib/biomech/knee-live";
 import { computeHipAngle } from "@/lib/biomech/hip-live";
@@ -34,6 +35,12 @@ import {
   computeHipMidX,
   computeHipWidth,
   computeLateralTrunkFlexionDeg,
+  computeLeanAwayDeg,
+  computeShoulderOverWrist,
+  computeWristAboveHipRatio,
+  computeRollerExtension,
+  computeWristFlexExtDeg,
+  computeForearmRotationDialDeg,
   computePelvicTiltDeg,
   computeShoulderWidth,
   computeSpineFlexionProxyDeg,
@@ -137,6 +144,20 @@ export function readCalibSignal(
       return sided((sd) => computeWristRiseRatio(kp, sd));
     case "forearm_from_down":
       return sided((sd) => computeForearmFromDownDeg(kp, sd));
+    case "forearm_dial":
+      return sided((sd) => computeForearmRotationDialDeg(kp, sd));
+    case "wrist_flex_ext":
+      return sided((sd) => computeWristFlexExtDeg(kp, sd));
+    case "ear_hip_elev":
+      return computeRollerExtension(kp)?.elev ?? null;
+    case "wrist_above_hip":
+      return sided((sd) => computeWristAboveHipRatio(kp, sd));
+    case "ankle_pump":
+      return sided((sd) => computeAnklePumpDeg(kp, sd));
+    case "shoulder_over_wrist":
+      return computeShoulderOverWrist(kp)?.shiftPct ?? null;
+    case "lean_away":
+      return sided((sd) => computeLeanAwayDeg(kp, sd));
     case "knee_spread":
       return computeKneeSpreadRatio(kp);
     case "knee_opening":

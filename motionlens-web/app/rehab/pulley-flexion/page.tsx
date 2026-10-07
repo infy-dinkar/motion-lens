@@ -193,7 +193,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} pulley-assisted lifts (${side} arm) to ${up.toFixed(0)}°, each held ${HOLD_SEC} s.`
+      ? `${reps} of ${TARGET_REPS} pulley-assisted lifts (${side} arm), each held ${HOLD_SEC} s.`
       : `No pulley-assisted lifts counted (${side} arm).`;
     return {
       module: "rehab" as const,

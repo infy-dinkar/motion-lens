@@ -211,7 +211,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} prone thoracic extensions to ${linesRef.current.up.toFixed(0)}°+ of chest lift, each held ${HOLD_SEC} s.`
+      ? `${reps} of ${TARGET_REPS} prone thoracic extensions, each held ${HOLD_SEC} s.`
       : "No prone thoracic extensions counted.";
     return {
       module: "rehab" as const,

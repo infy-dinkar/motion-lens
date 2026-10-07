@@ -212,7 +212,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} McKenzie press-ups to ${linesRef.current.up.toFixed(0)}°+ of trunk lift.`
+      ? `${reps} of ${TARGET_REPS} McKenzie press-ups.`
       : "No McKenzie press-ups counted.";
     return {
       module: "rehab" as const,

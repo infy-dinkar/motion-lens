@@ -22,7 +22,7 @@ import {
   Timer,
 } from "lucide-react";
 
-/** @typedef {"knee" | "hip" | "back" | "shoulder" | "elbow" | "ankle" | "cervical"} RehabJoint */
+/** @typedef {"knee" | "hip" | "back" | "shoulder" | "elbow" | "wrist" | "ankle" | "cervical"} RehabJoint */
 /** @typedef {"rep_count" | "hold_in_zone" | "target_reach" | "trace" | "weight_shift" | "match_pose" | "metronome"} MechanicId */
 
 /**
@@ -251,6 +251,37 @@ export const REHAB_EXERCISES = [
       "Standing side-on holding a chair: pull the chosen heel toward the buttock, knee pointing down, hold 30 s. A rep is one held stretch, read from knee flexion against a personal line (85% of the calibrated range); a knee lifted forward does not count. Counts holds, one leg.",
     patientBody:
       "Standing thigh stretch, heel to buttock, held 30 s. Counts holds.",
+    icon: Activity,
+    iconTone: "text-indigo-500",
+    tone: "from-indigo-500/15 to-indigo-500/5",
+  },  {
+    slug: "it-band-stretch",
+    issues: ["K1", "K2", "K7", "K8", "K11"],
+    code: "K13",
+    joint: "knee",
+    title: "TFL / IT Band Stretch",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Standing, facing the camera: cross the chosen leg behind the other, push that hip out and lean the upper body away, hold 30 s. A rep is one held stretch, read from the side bend away from the crossed leg against a personal line (85% of the calibrated range); leaning the wrong way or legs not crossed does not count. Counts holds, one leg.",
+    patientBody:
+      "Standing outer-thigh stretch, leg crossed behind, held 30 s. Counts holds.",
+    icon: Activity,
+    iconTone: "text-indigo-500",
+    tone: "from-indigo-500/15 to-indigo-500/5",
+  },
+  {
+    slug: "heel-prop",
+    issues: ["K1", "K2", "K7", "K8", "K11"],
+    code: "K14",
+    joint: "knee",
+    title: "Heel Prop",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Lying on the back, side-on camera, heel on a towel roll and nothing under the knee: relax and let the knee sag straight, hold 2 min. A rep is one held prop, read from knee flexion against the patient's own calibrated extension + 3° (no fixed straight). Counts holds, one knee.",
+    patientBody:
+      "Heel on a towel roll, let the knee straighten, held 2 min. Counts holds.",
     icon: Activity,
     iconTone: "text-indigo-500",
     tone: "from-indigo-500/15 to-indigo-500/5",
@@ -813,6 +844,22 @@ export const REHAB_EXERCISES = [
     iconTone: "text-teal-500",
     tone: "from-teal-500/15 to-teal-500/5",
   },
+  {
+    slug: "foam-roller-thoracic-extension",
+    issues: ["S1", "S9", "T1"],
+    code: "B18",
+    joint: "back",
+    title: "Thoracic Extension over Foam Roller",
+    mechanic: "rep_count",
+    needsSide: false,
+    publicBody:
+      "Lying back on a foam roller across the upper back, side-on camera, hips down, hands behind the head: extend over the roller, hold 3 s, come back. A rep is one held extension, read from how far the head drops (ear→hip line) below rest against a personal line (85% of the calibrated drop); lifting the hips or dropping only the head does not count. Counts reps.",
+    patientBody:
+      "Lean back over a foam roller and hold. Counts reps.",
+    icon: Activity,
+    iconTone: "text-teal-500",
+    tone: "from-teal-500/15 to-teal-500/5",
+  },
 
 
 
@@ -1068,6 +1115,54 @@ export const REHAB_EXERCISES = [
     iconTone: "text-amber-500",
     tone: "from-amber-500/15 to-amber-500/5",
   },
+  {
+    slug: "quadruped-weight-shift",
+    issues: ["S2", "S3", "S7", "S10"],
+    code: "S19",
+    joint: "shoulder",
+    title: "Quadruped Weight Shift",
+    mechanic: "rep_count",
+    needsSide: false,
+    publicBody:
+      "Hands and knees, side-on camera: shift the body forward so the shoulders pass the hands, elbows straight, hold 3 s, come back. A rep is one held shift, read from how far the shoulder is ahead of the wrist (% of the arm) against a personal line (85% of the calibrated shift); bent elbows do not count. Counts reps, both arms.",
+    patientBody:
+      "On hands and knees, shift your weight forward onto the hands and hold. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },
+  {
+    slug: "wall-push-up",
+    issues: ["S2", "S3", "S7", "S10"],
+    code: "S20",
+    joint: "shoulder",
+    title: "Wall Push-Up",
+    mechanic: "rep_count",
+    needsSide: false,
+    publicBody:
+      "Standing facing a wall, side-on camera, hands on the wall at shoulder height: bend the elbows to bring the chest toward the wall, pause, push back. A rep is bending past a personal line (85% of the calibrated elbow bend) and straightening again. Counts reps, both arms.",
+    patientBody:
+      "Push-ups against a wall. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },
+  {
+    slug: "towel-ir-stretch",
+    issues: ["S1", "S3", "S7"],
+    code: "S21",
+    joint: "shoulder",
+    title: "Towel Internal Rotation Stretch",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Back to the camera, towel over the shoulder from the top hand, the chosen hand holding it behind the waist: pull with the top hand to slide the lower hand up the back, hold 30 s. A rep is one held stretch, read from how far the wrist is above the hip (% of the trunk) against a personal line (85% of the calibrated reach). Counts holds, one arm.",
+    patientBody:
+      "Towel behind the back, pull the lower hand up, held 30 s. Counts holds.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },
 
 
 
@@ -1231,6 +1326,38 @@ export const REHAB_EXERCISES = [
     iconTone: "text-emerald-500",
     tone: "from-emerald-500/15 to-emerald-500/5",
   },
+  {
+    slug: "lateral-hops",
+    issues: ["A1", "A2", "A3", "A10"],
+    code: "A10",
+    joint: "ankle",
+    title: "Lateral Hops",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Facing the camera on the chosen leg, other knee up: hop sideways across a line and back, landing on the same leg. The two calibrated landing spots become zones; each arrival in the other zone is a rep (the middle is ignored, so half-hops do not count). A hop with the other foot down is not counted. Counts reps, one leg.",
+    patientBody:
+      "Hop side to side over a line on one leg. Counts hops.",
+    icon: Footprints,
+    iconTone: "text-emerald-500",
+    tone: "from-emerald-500/15 to-emerald-500/5",
+  },
+  {
+    slug: "ankle-pumps",
+    issues: ["A1", "A2", "A3", "A5"],
+    code: "A11",
+    joint: "ankle",
+    title: "Ankle Pumps",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Seated, leg straight out on a support, side-on camera: pull the toes up, then point them down, continuously. Ankle angle (shin vs sole, as in the ankle assessment) between the calibrated up and down ends; reaching both ends is one pump. A knee or leg that moves does not count. Counts reps, one foot.",
+    patientBody:
+      "Toes up, toes down, leg still. Counts pumps.",
+    icon: Footprints,
+    iconTone: "text-emerald-500",
+    tone: "from-emerald-500/15 to-emerald-500/5",
+  },
 
 
 
@@ -1265,6 +1392,166 @@ export const REHAB_EXERCISES = [
     icon: Dumbbell,
     iconTone: "text-amber-500",
     tone: "from-amber-500/15 to-amber-500/5",
+  },
+  {
+    slug: "biceps-curl",
+    issues: ["E3", "E4", "E7"],
+    code: "E3",
+    joint: "elbow",
+    title: "Biceps Curl",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Standing side-on with a weight, upper arm by the side: curl up toward the shoulder, pause, lower to a straight arm. A rep is curling past a personal line (85% of the calibrated elbow bend) and lowering again; swinging the upper arm forward does not count. Counts reps, one arm.",
+    patientBody:
+      "Curl a weight up and down, upper arm still. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },
+  {
+    slug: "median-nerve-slider",
+    issues: ["W1", "C3"],
+    code: "E4",
+    joint: "elbow",
+    title: "Median Nerve Slider",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Facing the camera, the chosen arm out to the side: straighten the elbow while tilting the head toward the arm, bend it while tilting away. Rep-Count on elbow straightness against a personal line (85% of the calibrated straightening); head away or level with the elbow straight (a tensioner) does not count. Counts reps, one arm.",
+    patientBody:
+      "Arm out to the side: elbow straight + head toward it, elbow bent + head away. Counts reps.",
+    icon: Activity,
+    iconTone: "text-teal-500",
+    tone: "from-teal-500/15 to-teal-500/5",
+  },
+  {
+    slug: "ulnar-nerve-tensioner",
+    issues: ["E6"],
+    code: "E5",
+    joint: "elbow",
+    title: "Ulnar Nerve Glide (Tensioner)",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "TENSIONER version. Facing the camera, the chosen arm out to the side: bring the hand over the eye like a mask while tilting the head AWAY from the arm, hold 1 s, arm back out. Rep-Count on elbow bend against a personal line (85% of the calibrated bend), with the hand at the face and the head away. Counts reps, one arm.",
+    patientBody:
+      "Tensioner: hand to the eye like a mask, head away from the arm. Counts reps.",
+    icon: Activity,
+    iconTone: "text-teal-500",
+    tone: "from-teal-500/15 to-teal-500/5",
+  },
+  {
+    slug: "wrist-flexion-extension",
+    issues: ["W3", "W4"],
+    code: "W1",
+    joint: "wrist",
+    title: "Wrist Flexion / Extension",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Seated, forearm on a table with the hand over the edge, palm down, side-on camera: bend the wrist up, then down. Wrist angle from the forearm line and the wrist-to-'middle finger joint' line (index/pinky mid-point); reaching both calibrated ends is one rep. Approximate — the pose model has four hand points. Counts reps, one wrist.",
+    patientBody:
+      "Wrist up, wrist down, forearm on the table. Counts reps.",
+    icon: Activity,
+    iconTone: "text-violet-500",
+    tone: "from-violet-500/15 to-violet-500/5",
+  },
+  {
+    slug: "wrist-flexor-extensor-stretch",
+    issues: ["W1", "W3", "E1", "E2"],
+    code: "W2",
+    joint: "wrist",
+    title: "Wrist Flexor & Extensor Stretch",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Standing side-on, arm straight out: flexor stretch (palm forward, fingers pulled back) held 30 s ×3, then extensor stretch (palm down, hand pressed down) held 30 s ×3. Each held stretch is one rep, read from the wrist angle against that part's personal line (85% of the calibrated end). Approximate — four hand points, and the other hand may cover the fingers. Counts holds, one arm.",
+    patientBody:
+      "Wrist stretch: fingers back ×3, then hand down ×3, 30 s each. Counts holds.",
+    icon: Activity,
+    iconTone: "text-violet-500",
+    tone: "from-violet-500/15 to-violet-500/5",
+  },
+  {
+    slug: "pronation-supination",
+    issues: ["W3", "W4", "E1", "E2", "E3", "E4", "E5", "E7"],
+    code: "W3",
+    joint: "wrist",
+    title: "Pronation / Supination",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Facing the camera, elbow bent at the side, forearm pointing at the camera: turn the palm up, then down. The hand is read like a clock hand (pinky → thumb line); reaching both calibrated ends is one rep. The most approximate wrist exercise — thumb and pinky points only. Counts reps, one arm.",
+    patientBody:
+      "Turn the palm up, then down, elbow at your side. Counts reps.",
+    icon: Activity,
+    iconTone: "text-violet-500",
+    tone: "from-violet-500/15 to-violet-500/5",
+  },
+  {
+    slug: "dart-throwers-motion",
+    issues: ["W3", "W4"],
+    code: "W7",
+    joint: "wrist",
+    title: "Dart-Thrower's Motion",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Seated, forearm on a table, thumb up, side-on camera: wrist up and back toward the thumb (cocking a dart), then down and forward toward the little finger (releasing it). Reaching both calibrated ends is one rep. The camera sees the up/down part of the path only. Counts reps, one wrist.",
+    patientBody:
+      "Wrist back like cocking a dart, then throw. Counts reps.",
+    icon: Activity,
+    iconTone: "text-violet-500",
+    tone: "from-violet-500/15 to-violet-500/5",
+  },
+  {
+    slug: "wrist-curls",
+    issues: ["W3", "W4"],
+    code: "W4",
+    joint: "wrist",
+    title: "Dumbbell Wrist Curls",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Seated, forearm on the thigh, palm up, a light weight in the hand, side-on camera: let the wrist hang down, curl it up, lower it. Wrist angle against the calibrated hanging and curled ends; reaching both is one rep. Approximate — the fingers grip the weight. Counts reps, one wrist.",
+    patientBody:
+      "Curl a light weight with the wrist, palm up. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-violet-500",
+    tone: "from-violet-500/15 to-violet-500/5",
+  },
+  {
+    slug: "eccentric-wrist-extension",
+    issues: ["E1"],
+    code: "W5",
+    joint: "wrist",
+    title: "Eccentric Wrist Extension",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Seated, forearm on the thigh, palm down, a light weight (or a FlexBar — Tyler twist (FlexBar)), side-on camera: the other hand lifts the wrist up, then it is lowered slowly. A rep is one lowering that takes at least 3 s; faster ones are shown as too fast and not counted. Counts reps, one wrist.",
+    patientBody:
+      "Palm down: lift the wrist with the other hand, lower it slowly. Counts slow lowerings.",
+    icon: Dumbbell,
+    iconTone: "text-violet-500",
+    tone: "from-violet-500/15 to-violet-500/5",
+  },
+  {
+    slug: "eccentric-wrist-flexion",
+    issues: ["E2"],
+    code: "W6",
+    joint: "wrist",
+    title: "Eccentric Wrist Flexion",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Seated, forearm on the thigh, palm up, a light weight (or a FlexBar — reverse Tyler twist (FlexBar)), side-on camera: the other hand lifts the wrist up, then it is lowered slowly. A rep is one lowering that takes at least 3 s; faster ones are shown as too fast and not counted. Counts reps, one wrist.",
+    patientBody:
+      "Palm up: lift the wrist with the other hand, lower it slowly. Counts slow lowerings.",
+    icon: Dumbbell,
+    iconTone: "text-violet-500",
+    tone: "from-violet-500/15 to-violet-500/5",
   },
 
   {
@@ -1346,7 +1633,7 @@ export const REHAB_EXERCISES = [
 ];
 
 /** Order in which joint sections render on the catalogue pages. */
-export const JOINT_ORDER = ["knee", "hip", "back", "shoulder", "elbow", "ankle", "cervical"];
+export const JOINT_ORDER = ["knee", "hip", "back", "shoulder", "elbow", "wrist", "ankle", "cervical"];
 
 /** Display labels + brief clinical subtitles for the four groups. */
 export const JOINT_META = {
@@ -1355,6 +1642,7 @@ export const JOINT_META = {
   back:     { label: "Back",     subtitle: "Posture, extension, mobility, and core stability." },
   shoulder: { label: "Shoulder", subtitle: "Elevation, reach, rotation, and scapular control." },
   elbow:    { label: "Elbow", subtitle: "Elbow range of motion and arm strength." },
+  wrist:    { label: "Wrist & Hand", subtitle: "Wrist range of motion, stretches and strength." },
   ankle:    { label: "Ankle & Foot", subtitle: "Calf strength, ankle control, and balance." },
   cervical: { label: "Cervical", subtitle: "Neck range of motion and posture." },
 };
@@ -1366,7 +1654,7 @@ export const JOINT_META = {
  */
 export function groupExercisesByJoint(exercises = visibleExercises()) {
   /** @type {Record<RehabJoint, RehabExerciseEntry[]>} */
-  const byJoint = { knee: [], hip: [], back: [], shoulder: [], elbow: [], ankle: [], cervical: [] };
+  const byJoint = { knee: [], hip: [], back: [], shoulder: [], elbow: [], wrist: [], ankle: [], cervical: [] };
   for (const ex of exercises) byJoint[ex.joint]?.push(ex);
   return JOINT_ORDER.map((joint) => ({
     joint: /** @type {RehabJoint} */ (joint),

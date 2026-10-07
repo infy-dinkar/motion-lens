@@ -187,7 +187,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} abduction slides (${side} leg) to ${up.toFixed(0)}%+ knee spread.`
+      ? `${reps} of ${TARGET_REPS} abduction slides (${side} leg) to knee spread.`
       : `No abduction slides counted (${side} leg).`;
     return {
       module: "rehab" as const,

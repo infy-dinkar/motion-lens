@@ -190,7 +190,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} clamshells (${side} leg on top) to ${up.toFixed(0)}°+ of knee opening.`
+      ? `${reps} of ${TARGET_REPS} clamshells (${side} leg on top).`
       : `No clamshells counted (${side} leg on top).`;
     return {
       module: "rehab" as const,

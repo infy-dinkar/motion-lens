@@ -194,7 +194,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} slow decline squats (${side} leg) to ${lines.up.toFixed(0)}° of knee bend`
+      ? `${reps} of ${TARGET_REPS} slow decline squats (${side} leg)`
         + (fast > 0 ? `; ${fast} lowered too fast.` : ".")
       : `No slow decline squats counted (${side} leg).`;
     return {

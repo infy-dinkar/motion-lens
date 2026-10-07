@@ -187,7 +187,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} star excursion reaches standing on the ${side} leg (${up.toFixed(0)}%+ of leg length).`
+      ? `${reps} of ${TARGET_REPS} star excursion reaches standing on the ${side} leg.`
       : `No star excursion reaches counted (${side} leg).`;
     return {
       module: "rehab" as const,

@@ -230,7 +230,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} rows to ${linesRef.current.up.toFixed(0)}°+ of elbow bend, each squeezed ${HOLD_SEC} s.`
+      ? `${reps} of ${TARGET_REPS} rows, each squeezed ${HOLD_SEC} s.`
       : "No rows counted.";
     return {
       module: "rehab" as const,

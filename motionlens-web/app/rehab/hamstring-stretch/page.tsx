@@ -203,7 +203,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} hamstring stretches (${side} leg) at ${up.toFixed(0)}°+, each held ${HOLD_SEC} s.`
+      ? `${reps} of ${TARGET_REPS} hamstring stretches (${side} leg), each held ${HOLD_SEC} s.`
       : `No hamstring stretch held long enough (${side} leg).`;
     return {
       module: "rehab" as const,

@@ -227,7 +227,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} slow Nordic curls to ${linesRef.current.up.toFixed(0)}°+ of lean`
+      ? `${reps} of ${TARGET_REPS} slow Nordic curls`
         + (fast + hips > 0 ? `; ${fast} too fast, ${hips} with the hips bent.` : ".")
       : "No slow Nordic curls counted.";
     return {

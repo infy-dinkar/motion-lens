@@ -209,7 +209,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} quad stretches (${side} leg) at ${up.toFixed(0)}°+ of knee bend, each held ${HOLD_SEC} s.`
+      ? `${reps} of ${TARGET_REPS} quad stretches (${side} leg), each held ${HOLD_SEC} s.`
       : `No quad stretch held long enough (${side} leg).`;
     return {
       module: "rehab" as const,

@@ -221,7 +221,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} Romanian deadlifts to ${linesRef.current.up.toFixed(0)}°+ of trunk tilt.`
+      ? `${reps} of ${TARGET_REPS} Romanian deadlifts.`
       : "No Romanian deadlifts counted.";
     return {
       module: "rehab" as const,

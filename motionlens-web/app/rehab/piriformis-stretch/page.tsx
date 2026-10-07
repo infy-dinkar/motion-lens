@@ -190,7 +190,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} figure-4 stretches (${side} hip) at ${up.toFixed(0)}°+, each held ${HOLD_SEC} s.`
+      ? `${reps} of ${TARGET_REPS} figure-4 stretches (${side} hip), each held ${HOLD_SEC} s.`
       : `No figure-4 stretch held long enough (${side} hip).`;
     return {
       module: "rehab" as const,

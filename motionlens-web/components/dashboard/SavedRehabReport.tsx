@@ -29,6 +29,7 @@ import { PercentRing } from "@/components/rehab/report/PercentRing";
 import { TargetVsValue } from "@/components/rehab/report/TargetVsValue";
 import { DurationChip } from "@/components/rehab/report/DurationChip";
 import { toDisplayKneeAngle } from "@/lib/rehab/kneeAngleDisplay";
+import { isCountOnlyExercise } from "@/lib/rehab/countOnlyExercises";
 
 interface Props {
   patientName: string | null;
@@ -214,7 +215,10 @@ export function SavedRehabReport({
       {/* Calibration — the two holds recorded before the exercise began:
           the resting value and the comfortable range. Present only on
           sessions run since calibration shipped; older reports skip it. */}
-      <CalibrationCard raw={pickObject(metrics, "calibration")} />
+      {/* The PDF exercises show counts only — no calibrated angles. */}
+      {!isCountOnlyExercise(exerciseSlug) && (
+        <CalibrationCard raw={pickObject(metrics, "calibration")} />
+      )}
 
       {/* Best-rep skeleton — redrawn from saved landmark coords onto
           a stand-alone canvas so it's centered + full-body, not a

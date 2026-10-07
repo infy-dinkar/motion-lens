@@ -769,3 +769,217 @@ export function computeElbowInteriorDeg(
   const cos = Math.max(-1, Math.min(1, (ax * bx + ay * by) / (la * lb)));
   return (Math.acos(cos) * 180) / Math.PI;
 }
+
+/** IT band stretch: side bend AWAY from the given leg, in degrees
+ *  (computeLateralTrunkFlexionDeg signed so that bending away from
+ *  `side` is positive; bending toward it reads negative). */
+export function computeLeanAwayDeg(keypoints: Keypoint[], side: "left" | "right"): number | null {
+  const raw = computeLateralTrunkFlexionDeg(keypoints);
+  if (raw === null) return null;
+  // raw > 0 = patient bending right. Away from the right leg = left.
+  return side === "right" ? -raw : raw;
+}
+
+/** Knee gap from the front, SIGNED, in hip widths: (left knee x − right
+ *  knee x) / hip width in the raw frame. ~1 standing normally, near 0 or
+ *  negative with the legs crossed. Null when hips or knees are unseen. */
+export function computeKneeGapSigned(keypoints: Keypoint[]): number | null {
+  const ids = [LM.LEFT_HIP, LM.RIGHT_HIP, LM.LEFT_KNEE, LM.RIGHT_KNEE];
+  const p = ids.map((i) => keypoints[i]);
+  if (p.some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) return null;
+  const hipW = Math.abs(p[0].x - p[1].x);
+  if (hipW < 1) return null;
+  return (p[2].x - p[3].x) / hipW;
+}
+
+/** From the front, standing on `side`: how far the OTHER knee is above
+ *  the standing knee, in standing-thigh lengths (hip→knee). ~0 with both
+ *  feet down, positive with the other leg lifted. Knees only, no ankles.
+ *  Null when the hip or either knee is not seen. */
+export function computeFreeKneeLift(keypoints: Keypoint[], side: "left" | "right"): number | null {
+  const H = keypoints[side === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP];
+  const K = keypoints[side === "left" ? LM.LEFT_KNEE : LM.RIGHT_KNEE];
+  const F = keypoints[side === "left" ? LM.RIGHT_KNEE : LM.LEFT_KNEE];
+  if ([H, K, F].some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) return null;
+  const thigh = Math.hypot(K.x - H.x, K.y - H.y);
+  if (thigh < 1) return null;
+  // Image y grows downward: a lifted knee has the smaller y.
+  return (K.y - F.y) / thigh;
+}
+
+/** Quadruped, side-on: how far the shoulder is AHEAD of the wrist, as a
+ *  percentage of the arm (shoulder → wrist). "Ahead" is toward the head,
+ *  taken from the shoulder's side of the hip, so the patient may face
+ *  either way. ~0 with the shoulder over the hand, positive shifting
+ *  forward, negative rocking back. Uses the side the camera sees more
+ *  clearly; also returns that side's elbow bend (0 = straight). Null
+ *  when neither side's shoulder, elbow, wrist and hip are seen. */
+export function computeShoulderOverWrist(
+  keypoints: Keypoint[],
+): { shiftPct: number; elbowBend: number } | null {
+  let best: { shiftPct: number; elbowBend: number; score: number } | null = null;
+  for (const side of ["left", "right"] as const) {
+    const S = keypoints[side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER];
+    const E = keypoints[side === "left" ? LM.LEFT_ELBOW : LM.RIGHT_ELBOW];
+    const W = keypoints[side === "left" ? LM.LEFT_WRIST : LM.RIGHT_WRIST];
+    const H = keypoints[side === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP];
+    if ([S, E, W, H].some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) continue;
+    const arm = Math.hypot(S.x - W.x, S.y - W.y);
+    if (arm < 1 || Math.abs(S.x - H.x) < 1) continue;
+    const dir = Math.sign(S.x - H.x);
+    const shiftPct = (((S.x - W.x) * dir) / arm) * 100;
+    const ax = S.x - E.x, ay = S.y - E.y, bx = W.x - E.x, by = W.y - E.y;
+    const m = Math.hypot(ax, ay) * Math.hypot(bx, by);
+    if (m < 1e-4) continue;
+    const interior = (Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / m))) * 180) / Math.PI;
+    const score = Math.min(...[S, E, W, H].map((k) => k.score ?? 0));
+    if (!best || score > best.score) best = { shiftPct, elbowBend: 180 - interior, score };
+  }
+  return best ? { shiftPct: best.shiftPct, elbowBend: best.elbowBend } : null;
+}
+
+/** Upper arm (shoulder → elbow) angle from straight down, in degrees,
+ *  unsigned: ~0 hanging by the side, rising as the elbow moves forward
+ *  or out. Same measure as the elbow AROM pose gate. Null when unseen. */
+export function computeUpperArmFromVerticalDeg(keypoints: Keypoint[], side: "left" | "right"): number | null {
+  const s = keypoints[side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER];
+  const e = keypoints[side === "left" ? LM.LEFT_ELBOW : LM.RIGHT_ELBOW];
+  if (!s || !e || (s.score ?? 0) < VIS_THRESHOLD || (e.score ?? 0) < VIS_THRESHOLD) return null;
+  const dx = e.x - s.x, dy = e.y - s.y;
+  if (Math.hypot(dx, dy) < 1) return null;
+  return Math.abs((Math.atan2(dx, dy) * 180) / Math.PI);
+}
+
+/** Towel IR stretch, from behind: how far the wrist has slid UP the back
+ *  above the same-side hip, as a percentage of the trunk (hip →
+ *  shoulder). ~0 at the waist, ~45 mid-back, ~75 at the shoulder blade;
+ *  floored at 0. Null when the shoulder, wrist or hip is not seen. */
+export function computeWristAboveHipRatio(keypoints: Keypoint[], side: "left" | "right"): number | null {
+  const s = keypoints[side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER];
+  const w = keypoints[side === "left" ? LM.LEFT_WRIST : LM.RIGHT_WRIST];
+  const h = keypoints[side === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP];
+  if (!s || !w || !h) return null;
+  if (Math.min(s.score ?? 0, w.score ?? 0, h.score ?? 0) < VIS_THRESHOLD) return null;
+  const torso = Math.hypot(s.x - h.x, s.y - h.y);
+  if (torso < 1) return null;
+  // Image y grows downward: a wrist above the hip has the smaller y.
+  return Math.max(0, ((h.y - w.y) / torso) * 100);
+}
+
+/** Thoracic extension over a foam roller, side-on, lying on the back.
+ *  From the side the camera sees more clearly (ear, shoulder, hip, knee):
+ *    elev      — ear→hip line above the floor line, degrees, SIGNED
+ *                (+ head above the hip). Drops as the upper back
+ *                extends over the roller.
+ *    neckBend  — how far the shoulder→ear line bends off the
+ *                hip→shoulder line, degrees (0 = head in line).
+ *    thighDeg  — thigh (hip→knee) above the floor line, degrees; flattens
+ *                when the hips lift off the floor.
+ *  Null when no side has all four points. */
+export function computeRollerExtension(
+  keypoints: Keypoint[],
+): { elev: number; neckBend: number; thighDeg: number } | null {
+  let best: { elev: number; neckBend: number; thighDeg: number; score: number } | null = null;
+  for (const side of ["left", "right"] as const) {
+    const E = keypoints[side === "left" ? LM.LEFT_EAR : LM.RIGHT_EAR];
+    const S = keypoints[side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER];
+    const H = keypoints[side === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP];
+    const K = keypoints[side === "left" ? LM.LEFT_KNEE : LM.RIGHT_KNEE];
+    if ([E, S, H, K].some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) continue;
+    const dx = Math.abs(E.x - H.x);
+    if (dx < 1) continue;
+    // Image y grows downward: a head above the hip has the smaller y.
+    const elev = (Math.atan2(H.y - E.y, dx) * 180) / Math.PI;
+    const ax = S.x - H.x, ay = S.y - H.y, bx = E.x - S.x, by = E.y - S.y;
+    const m = Math.hypot(ax, ay) * Math.hypot(bx, by);
+    if (m < 1e-4) continue;
+    const neckBend = (Math.acos(Math.max(-1, Math.min(1, (ax * bx + ay * by) / m))) * 180) / Math.PI;
+    const thighDeg = (Math.atan2(H.y - K.y, Math.max(1e-4, Math.abs(K.x - H.x))) * 180) / Math.PI;
+    const score = Math.min(...[E, S, H, K].map((k) => k.score ?? 0));
+    if (!best || score > best.score) best = { elev, neckBend, thighDeg, score };
+  }
+  return best ? { elev: best.elev, neckBend: best.neckBend, thighDeg: best.thighDeg } : null;
+}
+
+/** From the front: head side-tilt TOWARD `side`, degrees, signed — the
+ *  ear-to-ear line's tilt, positive when that side's ear is the LOWER
+ *  one (head tipped toward that shoulder), negative when tipped away.
+ *  Uses the body's own left/right labels, so mirroring does not matter.
+ *  Null when either ear is not seen. */
+export function computeHeadTiltTowardDeg(keypoints: Keypoint[], side: "left" | "right"): number | null {
+  const own = keypoints[side === "left" ? LM.LEFT_EAR : LM.RIGHT_EAR];
+  const oth = keypoints[side === "left" ? LM.RIGHT_EAR : LM.LEFT_EAR];
+  if (!own || !oth || (own.score ?? 0) < VIS_THRESHOLD || (oth.score ?? 0) < VIS_THRESHOLD) return null;
+  const dx = Math.abs(own.x - oth.x);
+  if (dx < 1) return null;
+  // Image y grows downward: the lower ear has the larger y.
+  return (Math.atan2(own.y - oth.y, dx) * 180) / Math.PI;
+}
+
+/** From the front: distance from the `side` hand (index finger point) to
+ *  the same-side eye — the ear when the eye is hidden — in shoulder
+ *  widths. ~0.1–0.3 with the hand over the eye like a mask, 1.5+ with the
+ *  arm out. Null when the hand, both face points or a shoulder are not
+ *  seen. */
+export function computeHandToFaceRatio(keypoints: Keypoint[], side: "left" | "right"): number | null {
+  const hand = keypoints[side === "left" ? LM.LEFT_INDEX : LM.RIGHT_INDEX];
+  const eye = keypoints[side === "left" ? LM.LEFT_EYE : LM.RIGHT_EYE];
+  const ear = keypoints[side === "left" ? LM.LEFT_EAR : LM.RIGHT_EAR];
+  const ls = keypoints[LM.LEFT_SHOULDER], rs = keypoints[LM.RIGHT_SHOULDER];
+  if (!hand || (hand.score ?? 0) < VIS_THRESHOLD) return null;
+  if (!ls || !rs || (ls.score ?? 0) < VIS_THRESHOLD || (rs.score ?? 0) < VIS_THRESHOLD) return null;
+  const face = eye && (eye.score ?? 0) >= VIS_THRESHOLD ? eye
+    : ear && (ear.score ?? 0) >= VIS_THRESHOLD ? ear : null;
+  if (!face) return null;
+  const width = Math.hypot(ls.x - rs.x, ls.y - rs.y);
+  if (width < 1) return null;
+  return Math.hypot(hand.x - face.x, hand.y - face.y) / width;
+}
+
+/** Wrist flexion / extension, side-on, SIGNED degrees. Two lines from the
+ *  wrist: to the elbow (forearm) and to the "middle finger joint" — the
+ *  mid-point of the index and pinky points (the model has no middle
+ *  finger). 0 with the hand in line with the forearm; + with the hand
+ *  tipped UP on screen (extension, palm down), − tipped down (flexion).
+ *  Works whichever way the forearm points. Null when the elbow, wrist,
+ *  index or pinky is not seen. */
+export function computeWristFlexExtDeg(keypoints: Keypoint[], side: "left" | "right"): number | null {
+  const E = keypoints[side === "left" ? LM.LEFT_ELBOW : LM.RIGHT_ELBOW];
+  const W = keypoints[side === "left" ? LM.LEFT_WRIST : LM.RIGHT_WRIST];
+  const I = keypoints[side === "left" ? LM.LEFT_INDEX : LM.RIGHT_INDEX];
+  const P = keypoints[side === "left" ? LM.LEFT_PINKY : LM.RIGHT_PINKY];
+  if ([E, W, I, P].some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) return null;
+  const mx = (I.x + P.x) / 2, my = (I.y + P.y) / 2;
+  const fx = W.x - E.x, fy = W.y - E.y;   // forearm, elbow → wrist
+  const hx = mx - W.x, hy = my - W.y;     // hand, wrist → middle
+  if (Math.hypot(fx, fy) < 1e-4 || Math.hypot(hx, hy) < 1e-4) return null;
+  const cross = fx * hy - fy * hx;
+  const dot = fx * hx + fy * hy;
+  const mag = (Math.atan2(Math.abs(cross), dot) * 180) / Math.PI;
+  // Image y grows downward. With the forearm pointing right, a hand
+  // tipped up gives a negative cross; pointing left, a positive one.
+  const dir = fx >= 0 ? 1 : -1;
+  return cross * dir <= 0 ? mag : -mag;
+}
+
+/** Pronation / supination, from the front with the forearm pointing at
+ *  the camera (elbow bent 90°, tucked): the hand is read like a clock
+ *  hand — the pinky → thumb line's angle from straight UP, SIGNED.
+ *  0 = thumb up (neutral); + = thumb turned OUT, away from the body
+ *  (supination, palm up, ~+90); − = thumb turned IN (pronation, palm
+ *  down, ~−90). "Out" comes from the shoulders, so either arm works.
+ *  Approximate — thumb and pinky are small points. Null when the thumb,
+ *  pinky or either shoulder is not seen. */
+export function computeForearmRotationDialDeg(keypoints: Keypoint[], side: "left" | "right"): number | null {
+  const T = keypoints[side === "left" ? LM.LEFT_THUMB : LM.RIGHT_THUMB];
+  const P = keypoints[side === "left" ? LM.LEFT_PINKY : LM.RIGHT_PINKY];
+  const own = keypoints[side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER];
+  const oth = keypoints[side === "left" ? LM.RIGHT_SHOULDER : LM.LEFT_SHOULDER];
+  if ([T, P, own, oth].some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) return null;
+  const vx = T.x - P.x, vy = T.y - P.y;
+  if (Math.hypot(vx, vy) < 1e-4) return null;
+  // Angle from straight up (image y grows downward, so up is −y).
+  const mag = (Math.atan2(Math.abs(vx), -vy) * 180) / Math.PI;
+  const outward = Math.sign(own.x - oth.x) || 1;
+  return vx * outward >= 0 ? mag : -mag;
+}

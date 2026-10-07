@@ -193,7 +193,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} heel slides (${side} leg) to ${up.toFixed(0)}° of knee bend.`
+      ? `${reps} of ${TARGET_REPS} heel slides (${side} leg).`
       : `No heel slides counted (${side} leg).`;
     return {
       module: "rehab" as const,

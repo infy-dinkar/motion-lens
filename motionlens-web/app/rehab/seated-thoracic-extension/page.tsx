@@ -187,7 +187,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} seated thoracic extensions to ${linesRef.current.up.toFixed(0)}°+, each held ${HOLD_SEC} s.`
+      ? `${reps} of ${TARGET_REPS} seated thoracic extensions, each held ${HOLD_SEC} s.`
       : "No seated thoracic extensions counted.";
     return {
       module: "rehab" as const,

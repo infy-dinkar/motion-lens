@@ -164,6 +164,8 @@ function inFrame(kp: LiveKeypoint[], i: number, f: FrameSize): boolean {
 function humanPart(part: BodyPart): string {
   if (part === "NOSE") return "head";
   if (part === "FOOT_INDEX") return "toes";
+  if (part === "INDEX" || part === "PINKY") return "fingers";
+  if (part === "THUMB") return "thumb";
   return part.toLowerCase();
 }
 

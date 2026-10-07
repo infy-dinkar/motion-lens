@@ -204,7 +204,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} side-lying external rotations (${side} arm) to ${up.toFixed(0)}°+.`
+      ? `${reps} of ${TARGET_REPS} side-lying external rotations (${side} arm).`
       : `No side-lying external rotations counted (${side} arm).`;
     return {
       module: "rehab" as const,

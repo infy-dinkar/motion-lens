@@ -187,7 +187,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} serratus wall slides (${side} arm) to ${up.toFixed(0)}°, each held ${HOLD_SEC} s.`
+      ? `${reps} of ${TARGET_REPS} serratus wall slides (${side} arm), each held ${HOLD_SEC} s.`
       : `No serratus wall slides counted (${side} arm).`;
     return {
       module: "rehab" as const,

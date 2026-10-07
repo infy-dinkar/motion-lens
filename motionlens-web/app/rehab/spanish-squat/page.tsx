@@ -208,7 +208,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} Spanish squat holds of ${HOLD_SEC} s at ${linesRef.current.up.toFixed(0)}° of knee bend.`
+      ? `${reps} of ${TARGET_REPS} Spanish squat holds of ${HOLD_SEC} s.`
       : "No Spanish squat hold lasted long enough to count.";
     return {
       module: "rehab" as const,

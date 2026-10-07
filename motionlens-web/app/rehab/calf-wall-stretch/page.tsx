@@ -201,7 +201,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} calf stretches (${side} leg) at ${up.toFixed(0)}°+ of shin lean, each held ${HOLD_SEC} s.`
+      ? `${reps} of ${TARGET_REPS} calf stretches (${side} leg), each held ${HOLD_SEC} s.`
       : `No calf stretch held long enough (${side} leg).`;
     return {
       module: "rehab" as const,

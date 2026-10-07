@@ -183,7 +183,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} wand-assisted flexion reps (${side} arm) to ${up.toFixed(0)}°, each held ${HOLD_SEC} s.`
+      ? `${reps} of ${TARGET_REPS} wand-assisted flexion reps (${side} arm), each held ${HOLD_SEC} s.`
       : `No wand-assisted flexion reps counted (${side} arm).`;
     return {
       module: "rehab" as const,

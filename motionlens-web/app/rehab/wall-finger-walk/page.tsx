@@ -182,7 +182,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} wall finger walks (${side} arm) to ${up.toFixed(0)}°, each held ${FINGER_WALK.HOLD_SEC} s.`
+      ? `${reps} of ${TARGET_REPS} wall finger walks (${side} arm), each held ${FINGER_WALK.HOLD_SEC} s.`
       : `No wall finger walks counted (${side} arm).`;
     return {
       module: "rehab" as const,

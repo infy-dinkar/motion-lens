@@ -200,7 +200,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} overhead triceps extensions (${side} arm) to ${up.toFixed(0)}°+ of elbow bend.`
+      ? `${reps} of ${TARGET_REPS} overhead triceps extensions (${side} arm).`
       : `No overhead triceps extensions counted (${side} arm).`;
     return {
       module: "rehab" as const,

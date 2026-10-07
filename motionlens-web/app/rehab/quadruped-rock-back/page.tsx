@@ -209,7 +209,7 @@ export function Inner() {
       bestStreak: bestStreakRef.current,
     };
     const interpretation = reps > 0
-      ? `${reps} of ${TARGET_REPS} quadruped rock-backs to ${linesRef.current.up.toFixed(0)}°+ of hip fold.`
+      ? `${reps} of ${TARGET_REPS} quadruped rock-backs.`
       : "No quadruped rock-backs counted.";
     return {
       module: "rehab" as const,

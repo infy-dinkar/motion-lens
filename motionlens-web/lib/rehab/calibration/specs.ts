@@ -45,7 +45,10 @@ export type BodyPart =
   | "KNEE"
   | "ANKLE"
   | "HEEL"
-  | "FOOT_INDEX";
+  | "FOOT_INDEX"
+  | "INDEX"
+  | "PINKY"
+  | "THUMB";
 
 /**
  * Which side of the body a required part is on.
@@ -108,6 +111,20 @@ export type CalibSignal =
   | "knee_opening"
   /** Supine abduction: knee gap / hip width from the feet end (computeKneeSpreadRatio). */
   | "knee_spread"
+  /** IT band stretch: side bend away from the working leg (computeLeanAwayDeg). */
+  | "lean_away"
+  /** Quadruped weight shift: shoulder ahead of the wrist, % of the arm (computeShoulderOverWrist). */
+  | "shoulder_over_wrist"
+  /** Ankle pumps: signed ankle angle, + dorsi / − plantar (lib/rehab/ankleMetrics). */
+  | "ankle_pump"
+  /** Towel IR stretch: wrist above the hip, % of the trunk, from behind (computeWristAboveHipRatio). */
+  | "wrist_above_hip"
+  /** Foam roller thoracic extension: ear→hip line above the floor, signed degrees (computeRollerExtension). */
+  | "ear_hip_elev"
+  /** Wrist flexion/extension, side-on, signed: + up (extension) / − down (computeWristFlexExtDeg). */
+  | "wrist_flex_ext"
+  /** Pronation/supination, front, forearm toward the camera: pinky→thumb line from up, + supination (computeForearmRotationDialDeg). */
+  | "forearm_dial"
   /** Side-lying ER: forearm angle from straight down, from the front (computeForearmFromDownDeg). */
   | "forearm_from_down"
   /** 180 − elbow interior angle: 0 straight, up as the elbow bends. */
@@ -331,6 +348,23 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     ],
     note: "Reads the picked foot only; rest (on the towel) is the zero for the top hold and the lowering.",
   },
+  "ankle-pumps": {
+    slug: "ankle-pumps",
+    view: "side", posture: "seated", sided: true,
+    parts: [W("KNEE"), W("ANKLE"), W("HEEL"), W("FOOT_INDEX")],
+    scaleRef: "thigh",
+    signal: "ankle_pump", signalSide: "working", unit: "deg",
+    holds: [
+      rest("Sit with the leg straight out and resting on a support, foot relaxed."),
+      { id: "range_left", title: "Toes up", instruction: "Pull the toes up toward you as far as you can, and hold." },
+      {
+        id: "range_right", title: "Toes down",
+        instruction: "Now point the toes down like pressing a pedal, and hold.",
+        otherSideMessage: "Now point the toes down",
+      },
+    ],
+    note: "Rehab ankle pumps. Signed ankle angle (shin vs sole, 90° neutral; + dorsi / − plantar), rehab's own copy of the biomech assessment's math. The two ends use the two-sided range holds: filed by sign, range_right = up (dorsi), range_left = down (plantar). A gate keeps the knee straight.",
+  },
   "calf-wall-stretch": {
     slug: "calf-wall-stretch",
     view: "side", posture: "standing", sided: true,
@@ -388,6 +422,175 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
       range("Keeping the elbow up, bend it to lower the hand behind your head, and hold."),
     ],
     note: "Overhead triceps extension. A pose gate keeps the elbow above the shoulder (else it is a curl). The range hold sets the page's personal bend line (85% of it).",
+  },
+  "wall-push-up": {
+    slug: "wall-push-up",
+    view: "side", posture: "standing", sided: false,
+    parts: [A("SHOULDER"), A("ELBOW"), A("WRIST")],
+    scaleRef: "torso",
+    signal: "elbow_flexion", signalSide: "any", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Bend the elbows — chest toward the wall",
+    holds: [
+      rest("Hands on the wall at shoulder height, elbows straight."),
+      range("Bend the elbows and bring the chest toward the wall, and hold."),
+    ],
+    note: "Rehab wall push-up. Elbow bend of the arm bent more (both arms work together). No body-line or hand-height check (user's choice).",
+  },
+  "biceps-curl": {
+    slug: "biceps-curl",
+    view: "side", posture: "standing", sided: true,
+    parts: [W("SHOULDER"), W("ELBOW"), W("WRIST")],
+    scaleRef: "torso",
+    signal: "elbow_flexion", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Curl the weight up toward your shoulder",
+    holds: [
+      rest("Stand tall, weight in the hand, arm straight down by your side."),
+      range("Curl the weight up toward your shoulder, upper arm by your side, and hold."),
+    ],
+    note: "Rehab biceps curl (standing, with a weight). Same signal as elbow AROM; the elbow AROM gate keeps the upper arm down. The page counts with a personal line and a short pause.",
+  },
+  "median-nerve-slider": {
+    slug: "median-nerve-slider",
+    view: "frontal", posture: "standing", sided: true,
+    parts: [W("SHOULDER"), W("ELBOW"), W("WRIST"), B("EAR")],
+    scaleRef: "shoulderWidth",
+    signal: "elbow_flexion", signalSide: "working", unit: "deg",
+    // Elbow bend DROPS as the elbow straightens.
+    rangeDirection: "lower",
+    wrongWayMessage: "Straighten the elbow",
+    holds: [
+      rest("Face the camera, arm out to the side at shoulder height, elbow bent, head tilted away."),
+      range("Straighten the elbow and tilt your head TOWARD the arm, and hold."),
+    ],
+    note: "Rehab median nerve slider (radial not built). Lines in elbow straightness (180 − bend). A gate needs the head tilted toward the arm on the range hold (away = tensioner). No arm-height check (user's choice); wrist extension not measured.",
+  },
+  "ulnar-nerve-tensioner": {
+    slug: "ulnar-nerve-tensioner",
+    view: "frontal", posture: "standing", sided: true,
+    parts: [W("SHOULDER"), W("ELBOW"), W("WRIST"), { part: "NOSE", side: "any" }],
+    scaleRef: "shoulderWidth",
+    signal: "elbow_flexion", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Bend the elbow and bring the hand to your face",
+    holds: [
+      rest("Face the camera, arm straight out to the side at shoulder height."),
+      range("TENSIONER: hand over your eye like a mask, and tilt your head AWAY from the arm, and hold."),
+    ],
+    note: "Rehab ulnar nerve glide — TENSIONER version (user's choice): mask position with the head tilted AWAY from the arm. Gates: hand at the face, head away (skipped when the ears are hidden).",
+  },
+  "wrist-flexion-extension": {
+    slug: "wrist-flexion-extension",
+    view: "side", posture: "seated", sided: true,
+    parts: [W("ELBOW"), W("WRIST"), W("INDEX"), W("PINKY")],
+    scaleRef: "torso",
+    signal: "wrist_flex_ext", signalSide: "working", unit: "deg",
+    holds: [
+      rest("Forearm on the table, hand over the edge, palm down, fingers straight and relaxed."),
+      { id: "range_left", title: "Hand up", instruction: "Bend the wrist UP as far as you can, and hold." },
+      {
+        id: "range_right", title: "Hand down",
+        instruction: "Now bend the wrist DOWN as far as you can, and hold.",
+        otherSideMessage: "Now bend the wrist down",
+      },
+    ],
+    note: "Rehab wrist AROM. Signed wrist angle (forearm line vs wrist → index/pinky mid-point, the 'middle finger joint'). Two-sided holds filed by sign: range_right = up (extension), range_left = down (flexion). No forearm-flat check (user's choice).",
+  },
+  "wrist-flexor-extensor-stretch": {
+    slug: "wrist-flexor-extensor-stretch",
+    view: "side", posture: "standing", sided: true,
+    parts: [W("ELBOW"), W("WRIST"), W("INDEX"), W("PINKY")],
+    scaleRef: "torso",
+    signal: "wrist_flex_ext", signalSide: "working", unit: "deg",
+    holds: [
+      rest("Arm straight out in front, wrist straight, fingers relaxed."),
+      { id: "range_left", title: "Flexor stretch", instruction: "Palm forward, pull the fingers back toward you with the other hand, and hold." },
+      {
+        id: "range_right", title: "Extensor stretch",
+        instruction: "Now palm down, press the hand down toward you with the other hand, and hold.",
+        otherSideMessage: "Now bend the wrist DOWN",
+      },
+    ],
+    note: "Rehab wrist flexor + extensor stretch on one page: 3 holds with the wrist UP (flexor stretch) then 3 with it DOWN (extensor stretch). Same signal as wrist AROM; two-sided holds filed by sign (range_right = up, range_left = down). No elbow-straight check (user's choice).",
+  },
+  "pronation-supination": {
+    slug: "pronation-supination",
+    view: "frontal", posture: "seated", sided: true,
+    parts: [W("WRIST"), W("THUMB"), W("PINKY"), B("SHOULDER")],
+    scaleRef: "shoulderWidth",
+    signal: "forearm_dial", signalSide: "working", unit: "deg",
+    holds: [
+      rest("Face the camera, elbow bent at your side, forearm pointing at the camera, thumb up."),
+      { id: "range_left", title: "Palm up", instruction: "Turn the palm UP as far as you can, and hold." },
+      {
+        id: "range_right", title: "Palm down",
+        instruction: "Now turn the palm DOWN as far as you can, and hold.",
+        otherSideMessage: "Now turn the palm the other way",
+      },
+    ],
+    note: "Rehab pronation/supination — the most approximate wrist exercise: the hand read as a clock hand (pinky → thumb). Two-sided holds filed by sign: range_right = supination (+), range_left = pronation (−). No elbow-tucked check (user's choice).",
+  },
+  "wrist-curls": {
+    slug: "wrist-curls",
+    view: "side", posture: "seated", sided: true,
+    parts: [W("ELBOW"), W("WRIST"), W("INDEX"), W("PINKY")],
+    scaleRef: "torso",
+    signal: "wrist_flex_ext", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Curl the weight up — wrist only",
+    holds: [
+      rest("Forearm on your thigh, palm up, weight in the hand, wrist hanging down."),
+      range("Curl the weight up with the wrist only, and hold."),
+    ],
+    note: "Rehab dumbbell wrist curl (palm up; reverse curl not built — user's choice). Same signal as wrist AROM: rest = the hanging end, range = the curled end; reaching both is a rep. Approximate — the fingers grip the weight.",
+  },
+  "eccentric-wrist-extension": {
+    slug: "eccentric-wrist-extension",
+    view: "side", posture: "seated", sided: true,
+    parts: [W("ELBOW"), W("WRIST"), W("INDEX"), W("PINKY")],
+    scaleRef: "torso",
+    signal: "wrist_flex_ext", signalSide: "working", unit: "deg",
+    // Rest = the wrist held UP (by the other hand); range = lowered.
+    rangeDirection: "lower",
+    wrongWayMessage: "Lower the wrist all the way down",
+    holds: [
+      rest("Forearm on your thigh, palm down, weight in the hand; lift the wrist UP with the other hand, and hold."),
+      range("Now let the wrist down all the way, and hold."),
+    ],
+    note: "Rehab eccentric wrist extension (PDF: Eccentric wrist extension / Tyler twist (FlexBar)). Same signal as wrist AROM; the page times each slow lowering (lib/rehab/loweringTimer). Palm direction is not seen — the extension and flexion versions look the same to the camera.",
+  },
+  "eccentric-wrist-flexion": {
+    slug: "eccentric-wrist-flexion",
+    view: "side", posture: "seated", sided: true,
+    parts: [W("ELBOW"), W("WRIST"), W("INDEX"), W("PINKY")],
+    scaleRef: "torso",
+    signal: "wrist_flex_ext", signalSide: "working", unit: "deg",
+    // Rest = the wrist held UP (by the other hand); range = lowered.
+    rangeDirection: "lower",
+    wrongWayMessage: "Lower the wrist all the way down",
+    holds: [
+      rest("Forearm on your thigh, palm up, weight in the hand; lift the wrist UP with the other hand, and hold."),
+      range("Now let the wrist down all the way, and hold."),
+    ],
+    note: "Rehab eccentric wrist flexion (PDF: Eccentric wrist flexion / reverse Tyler twist). Same signal as wrist AROM; the page times each slow lowering (lib/rehab/loweringTimer). Palm direction is not seen — the extension and flexion versions look the same to the camera.",
+  },
+  "dart-throwers-motion": {
+    slug: "dart-throwers-motion",
+    view: "side", posture: "seated", sided: true,
+    parts: [W("ELBOW"), W("WRIST"), W("INDEX"), W("PINKY")],
+    scaleRef: "torso",
+    signal: "wrist_flex_ext", signalSide: "working", unit: "deg",
+    holds: [
+      rest("Forearm on the table, thumb UP, wrist straight."),
+      { id: "range_left", title: "Back", instruction: "Move the wrist UP and back toward the thumb, like cocking a dart, and hold." },
+      {
+        id: "range_right", title: "Throw",
+        instruction: "Now move it DOWN and forward toward the little finger, like releasing a dart, and hold.",
+        otherSideMessage: "Now move the wrist down, toward the little finger",
+      },
+    ],
+    note: "Rehab dart-thrower's motion. Thumb up, so the visible part of the oblique path is up (radial) / down (ulnar) on screen — the same wrist signal as wrist AROM. The forward/back part goes toward the camera and is not seen. Two-sided holds filed by sign (range_right = up, range_left = down).",
   },
   "elbow-arom": {
     slug: "elbow-arom",
@@ -752,6 +955,21 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
 
   // ── B. Floor — camera low, trunk horizontal
 
+  "heel-prop": {
+    slug: "heel-prop",
+    view: "side", posture: "supine", sided: true,
+    parts: [W("HIP"), W("KNEE"), W("ANKLE")],
+    scaleRef: "thigh",
+    signal: "knee_flexion", signalSide: "working", unit: "deg",
+    // Flexion DROPS as the knee sags straight.
+    rangeDirection: "lower",
+    wrongWayMessage: "Let the knee straighten — heel on the towel roll",
+    holds: [
+      rest("Lie on your back, knee a little bent (a hand or small towel under it). Relax."),
+      range("Heel on the towel roll, nothing under the knee — let it straighten as far as it goes, and hold."),
+    ],
+    note: "Rehab heel prop. Lines are in the patient's own flexion (lib/rehab/flexionLines): calibrated range + 3°, never a fixed straight — a knee rarely reads 0° on camera.",
+  },
   "heel-slides": {
     slug: "heel-slides",
     view: "side", posture: "supine", sided: true,
@@ -923,6 +1141,20 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     ],
     note: "Hip flexion of either side (the clearer one). The range hold sets the page's personal fold line (85% of it).",
   },
+  "quadruped-weight-shift": {
+    slug: "quadruped-weight-shift",
+    view: "side", posture: "quadruped", sided: false,
+    parts: [A("SHOULDER"), A("ELBOW"), A("WRIST"), A("HIP")],
+    scaleRef: "torso",
+    signal: "shoulder_over_wrist", signalSide: "none", unit: "ratio",
+    rangeDirection: "higher",
+    wrongWayMessage: "Shift forward over your hands",
+    holds: [
+      rest("Hands and knees, shoulders right over the hands, back flat."),
+      range("Shift your body forward so the shoulders go past the hands, elbows straight, and hold."),
+    ],
+    note: "Rehab shoulder weight-bearing. Shoulder ahead of the wrist as % of the arm; forward is toward the head, so either facing works. A gate keeps the trunk level and the elbows straight.",
+  },
   "quadruped-rock-back": {
     slug: "quadruped-rock-back",
     view: "side", posture: "quadruped", sided: false,
@@ -936,6 +1168,21 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
       range("Rock back as far as you can keep the back flat, and hold."),
     ],
     note: "Same signal as child's pose. The range hold sets the page's personal rock-back line (85% of it).",
+  },
+  "foam-roller-thoracic-extension": {
+    slug: "foam-roller-thoracic-extension",
+    view: "side", posture: "supine", sided: false,
+    parts: [A("EAR"), A("SHOULDER"), A("HIP"), A("KNEE")],
+    scaleRef: "torso",
+    signal: "ear_hip_elev", signalSide: "none", unit: "deg",
+    // The head DROPS as the upper back extends over the roller.
+    rangeDirection: "lower",
+    wrongWayMessage: "Extend back over the roller",
+    holds: [
+      rest("Lie back on the roller, knees bent, hips down, hands behind your head."),
+      range("Extend your upper back over the roller, head in your hands, and hold."),
+    ],
+    note: "Rehab thoracic extension over a foam roller. Signal: ear→hip line above the floor (the head moves about twice as far as the shoulders). Gates: hips stay down (thigh not flattened) and the neck stays in line (no head drop alone).",
   },
   "mckenzie-press-up": {
     slug: "mckenzie-press-up",
@@ -1115,6 +1362,20 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
 
   // ── D. Frontal view — trunk and pelvis
 
+  "it-band-stretch": {
+    slug: "it-band-stretch",
+    view: "frontal", posture: "standing", sided: true,
+    parts: [B("SHOULDER"), B("HIP"), B("KNEE")],
+    scaleRef: "shoulderWidth",
+    signal: "lean_away", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Lean the other way — away from the crossed leg",
+    holds: [
+      rest("Stand tall facing the camera, feet apart."),
+      range("Cross the chosen leg behind the other, push that hip out and lean the upper body the other way, and hold."),
+    ],
+    note: "Rehab IT band / TFL stretch. Signal is side bend AWAY from the picked leg (positive), so bending toward it is the wrong way. Range hold is gated on the knees being crossed (knee points, not ankles).",
+  },
   "side-bend": {
     slug: "side-bend",
     view: "frontal", posture: "standing", sided: false,
@@ -1143,6 +1404,18 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
       range("Stand on your test leg, other foot lifted a few centimetres — and hold."),
     ],
     note: "Sided by stance leg (the page saves side = stance). Both hips must be clearly visible — no loose clothing.",
+  },
+  "lateral-hops": {
+    slug: "lateral-hops",
+    view: "frontal", posture: "standing", sided: true,
+    parts: [B("HIP"), B("KNEE")],
+    scaleRef: "hipWidth",
+    signal: "hip_mid_x_norm", signalSide: "none", unit: "ratio",
+    holds: [
+      rest("Stand on the chosen leg on one side of the line, other knee lifted a little forward."),
+      range("Hop across the line, land on the same leg, and hold."),
+    ],
+    note: "Rehab lateral hops. Rest and range are the two landing spots (either order); the page counts each arrival in the other spot (lib/rehab/zoneCounter). A gate keeps the other knee up (knees, not ankles).",
   },
   "weight-shift": {
     slug: "weight-shift",
@@ -1174,6 +1447,20 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
       range("Pull your elbows back past your body, squeeze the shoulder blades, and hold."),
     ],
     note: "Elbow bend of either arm; a pose gate checks the elbow ends up behind the trunk (a pull, not just a bent elbow). The range hold sets the page's personal line (85% of it).",
+  },
+  "towel-ir-stretch": {
+    slug: "towel-ir-stretch",
+    view: "back", posture: "standing", sided: true,
+    parts: [W("SHOULDER"), W("WRIST"), W("HIP")],
+    scaleRef: "torso",
+    signal: "wrist_above_hip", signalSide: "working", unit: "ratio",
+    rangeDirection: "higher",
+    wrongWayMessage: "Pull the towel — slide the lower hand up your back",
+    holds: [
+      rest("Back to the camera, the chosen hand behind you at the waist holding the towel."),
+      range("Pull the towel with the top hand so the lower hand slides up your back, and hold."),
+    ],
+    note: "Rehab towel internal-rotation stretch, camera behind. Wrist above the hip as % of the trunk. No hand-in-the-middle check (user's choice), so a hand raised at the side also reads as rising.",
   },
   "scapular-set": {
     slug: "scapular-set",

@@ -11,12 +11,13 @@
 // Gates only block. They never change the recorded value, so what is
 // saved is still the page's own measure.
 
+import { computeKneeInteriorDeg } from "@/lib/rehab/ankleMetrics";
 import type { LiveKeypoint } from "@/hooks/usePoseDetectionLive";
 import { LM_LIVE as LM } from "@/lib/pose/landmarks-live";
 import type { HoldSpec } from "@/lib/rehab/calibration/specs";
 import type { Side } from "@/lib/rehab/calibration/signals";
 import { computeShoulderAngle } from "@/lib/biomech/shoulder-live";
-import { computeHeelLiftDeg, computeSidePlankLine } from "@/lib/rehab/poseMetrics";
+import { computeFreeKneeLift, computeHeelLiftDeg, computeHandToFaceRatio, computeHeadTiltTowardDeg, computeKneeGapSigned, computeRollerExtension, computeShoulderOverWrist, computeSidePlankLine, computeTrunkAngleFromHorizontal } from "@/lib/rehab/poseMetrics";
 
 const VIS = 0.35;
 
@@ -459,6 +460,130 @@ const calfWallStretch: Gate = (kp, holdId, side) => {
   return { block: null, debug };
 };
 
+// ── IT band stretch ─────────────────────────────────────────────
+//
+// The range hold needs the legs crossed: from the front the knee gap
+// (hip widths, signed) drops from ~1 to near 0 or below. Knees, not
+// ankles — ankles are unreliable.
+export const IT_BAND_CROSS_MAX = 0.3;
+
+const itBandCrossed: Gate = (kp, holdId) => {
+  if (holdId !== "range") return NONE;
+  const g = computeKneeGapSigned(kp as unknown as Parameters<typeof computeKneeGapSigned>[0]);
+  if (g === null) return NONE;
+  const debug = `knee gap ${g.toFixed(2)} (max ${IT_BAND_CROSS_MAX})`;
+  if (g > IT_BAND_CROSS_MAX) return { block: "Cross the leg behind the other", debug };
+  return { block: null, debug };
+};
+
+// ── Lateral hops ───────────────────────────────────────────────
+//
+// One leg only: on both holds the other knee must be above the standing
+// knee by HOP_FREE_KNEE_MIN thigh lengths.
+export const HOP_FREE_KNEE_MIN = 0.1;
+
+const lateralHopsKneeUp: Gate = (kp, _holdId, side) => {
+  if (side === null) return NONE;
+  const lift = computeFreeKneeLift(kp as unknown as Parameters<typeof computeFreeKneeLift>[0], side);
+  if (lift === null) return NONE;
+  const debug = `other knee up ${lift.toFixed(2)} thighs (min ${HOP_FREE_KNEE_MIN})`;
+  if (lift < HOP_FREE_KNEE_MIN) return { block: "Keep the other foot up — knee a little forward", debug };
+  return { block: null, debug };
+};
+
+// ── Quadruped weight shift ─────────────────────────────────────
+//
+// Hands and knees: the trunk near level on both holds; on the range hold
+// the elbows straight (bending them is a push-up, not a shift).
+export const QWS_TRUNK_MAX = 35;
+export const QWS_ELBOW_BEND_MAX = 25;
+
+const quadWeightShift: Gate = (kp, holdId) => {
+  const k = kp as unknown as Parameters<typeof computeShoulderOverWrist>[0];
+  const trunk = computeTrunkAngleFromHorizontal(k);
+  if (trunk !== null && trunk > QWS_TRUNK_MAX) {
+    return { block: "Get on hands and knees, back flat", debug: `trunk ${trunk.toFixed(0)}° from level (max ${QWS_TRUNK_MAX})` };
+  }
+  if (holdId !== "range") return NONE;
+  const m = computeShoulderOverWrist(k);
+  if (m === null) return NONE;
+  const debug = `elbow bend ${m.elbowBend.toFixed(0)}° (max ${QWS_ELBOW_BEND_MAX})`;
+  if (m.elbowBend > QWS_ELBOW_BEND_MAX) return { block: "Keep the elbows straight", debug };
+  return { block: null, debug };
+};
+
+// ── Ankle pumps ────────────────────────────────────────────────
+//
+// The leg rests straight out on a support; a bent knee moves the shin
+// and so the ankle reading. Calibration holds need the knee within
+// PUMP_KNEE_BEND_MAX of straight (the live page also checks the knee
+// stays where it started).
+export const PUMP_KNEE_BEND_MAX = 25;
+
+const anklePumpsKnee: Gate = (kp, _holdId, side) => {
+  if (side === null) return NONE;
+  const k = computeKneeInteriorDeg(kp, side);
+  if (k === null) return NONE;
+  const bend = 180 - k;
+  const debug = `knee bend ${bend.toFixed(0)}° (max ${PUMP_KNEE_BEND_MAX})`;
+  if (bend > PUMP_KNEE_BEND_MAX) return { block: "Keep the leg straight out on the support", debug };
+  return { block: null, debug };
+};
+
+// ── Foam roller thoracic extension ─────────────────────────────
+//
+// Hips on the floor (a bridge flattens the ear→hip line too) on both
+// holds; on the range hold the neck in line (dropping the head alone is
+// not thoracic extension).
+export const ROLLER_THIGH_MIN = 25;
+export const ROLLER_NECK_MAX = 20;
+
+const rollerExtension: Gate = (kp, holdId) => {
+  const m = computeRollerExtension(kp as unknown as Parameters<typeof computeRollerExtension>[0]);
+  if (m === null) return NONE;
+  const debug = `thigh ${m.thighDeg.toFixed(0)}° (min ${ROLLER_THIGH_MIN}) · neck ${m.neckBend.toFixed(0)}° (max ${ROLLER_NECK_MAX})`;
+  if (m.thighDeg < ROLLER_THIGH_MIN) return { block: "Keep your hips on the floor", debug };
+  if (holdId !== "rest" && m.neckBend > ROLLER_NECK_MAX) {
+    return { block: "Keep your head in your hands — move the upper back", debug };
+  }
+  return { block: null, debug };
+};
+
+// ── Median nerve slider ────────────────────────────────────────
+//
+// Slider, not tensioner: with the elbow straight (range hold) the head
+// must tilt TOWARD the arm by MEDIAN_TOWARD_MIN.
+export const MEDIAN_TOWARD_MIN = 5;
+
+const medianSlider: Gate = (kp, holdId, side) => {
+  if (holdId !== "range" || side === null) return NONE;
+  const t = computeHeadTiltTowardDeg(kp as unknown as Parameters<typeof computeHeadTiltTowardDeg>[0], side);
+  if (t === null) return NONE;
+  const debug = `head tilt toward arm ${t.toFixed(0)}° (min ${MEDIAN_TOWARD_MIN})`;
+  if (t < MEDIAN_TOWARD_MIN) return { block: "Tilt your head TOWARD the arm", debug };
+  return { block: null, debug };
+};
+
+// ── Ulnar nerve tensioner ──────────────────────────────────────
+//
+// Range hold = the mask: the hand at the face (within ULNAR_FACE_MAX
+// shoulder widths of the same-side eye) and the head tilted AWAY from
+// the arm by ULNAR_AWAY_MIN — the tensioner. The head part is skipped
+// when the ears are hidden (the hand can cover one).
+export const ULNAR_FACE_MAX = 0.5;
+export const ULNAR_AWAY_MIN = 5;
+
+const ulnarTensioner: Gate = (kp, holdId, side) => {
+  if (holdId !== "range" || side === null) return NONE;
+  const k = kp as unknown as Parameters<typeof computeHandToFaceRatio>[0];
+  const face = computeHandToFaceRatio(k, side);
+  const tilt = computeHeadTiltTowardDeg(k, side);
+  const debug = `hand-face ${face === null ? "–" : face.toFixed(2)} (max ${ULNAR_FACE_MAX}) · head toward arm ${tilt === null ? "–" : tilt.toFixed(0)}° (need ≤ −${ULNAR_AWAY_MIN})`;
+  if (face !== null && face > ULNAR_FACE_MAX) return { block: "Hand over your eye like a mask", debug };
+  if (tilt !== null && tilt > -ULNAR_AWAY_MIN) return { block: "Tilt your head AWAY from the arm", debug };
+  return { block: null, debug };
+};
+
 // ── Romanian deadlift ────────────────────────────────────────────
 //
 // A squat also tips the trunk forward. In an RDL the knees stay soft:
@@ -699,6 +824,11 @@ const GATES: Record<string, Gate> = {
   "single-leg-bridge": singleLegBridge,
   "bridge-on-heels": bridgeOnHeels,
   "calf-wall-stretch": calfWallStretch,
+  "it-band-stretch": itBandCrossed,
+  "lateral-hops": lateralHopsKneeUp,
+  "quadruped-weight-shift": quadWeightShift,
+  "ankle-pumps": anklePumpsKnee,
+  "foam-roller-thoracic-extension": rollerExtension,
   "romanian-deadlift": both(trunkGate("forward"), rdlKneesSoft),
   "hip-flexor-stretch": hipFlexorStretch,
   "mckenzie-press-up": mckenziePressUp,
@@ -709,6 +839,9 @@ const GATES: Record<string, Gate> = {
   "side-lying-er": sideLyingEr,
   "triceps-extension": tricepsElbowUp,
   "elbow-arom": elbowArom,
+  "biceps-curl": elbowArom,
+  "median-nerve-slider": medianSlider,
+  "ulnar-nerve-tensioner": ulnarTensioner,
   "eccentric-biceps-curl": elbowArom,
   "standing-hamstring-curl": hamstringCurl,
   "quad-stretch": hamstringCurl,
