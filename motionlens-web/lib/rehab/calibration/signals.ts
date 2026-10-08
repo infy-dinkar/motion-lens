@@ -41,6 +41,14 @@ import {
   computeRollerExtension,
   computeWristFlexExtDeg,
   computeForearmRotationDialDeg,
+  computeChinTuck,
+  computeBothWristsRisePct,
+  computeUpperArmFromVerticalDeg,
+  computeKneeStrideRatio,
+  computeHipMidY,
+  computeForearmInwardPct,
+  computePunchReachPct,
+  computeWristReachPct,
   computePelvicTiltDeg,
   computeShoulderWidth,
   computeSpineFlexionProxyDeg,
@@ -144,6 +152,27 @@ export function readCalibSignal(
       return sided((sd) => computeWristRiseRatio(kp, sd));
     case "forearm_from_down":
       return sided((sd) => computeForearmFromDownDeg(kp, sd));
+    case "wrist_reach":
+      return computeWristReachPct(kp);
+    case "punch_reach":
+      return computePunchReachPct(kp);
+    case "forearm_inward":
+      return sided((sd) => computeForearmInwardPct(kp, sd));
+    case "hip_mid_y_norm": {
+      // Frame units ×100, flipped so up is higher (as hip_mid_x_norm).
+      const y = computeHipMidY(kp);
+      return y === null || frame.h <= 0 ? null : (1 - y / frame.h) * 100;
+    }
+    case "knee_stride": {
+      const r = computeKneeStrideRatio(kp);
+      return r === null ? null : Math.abs(r) * 100;
+    }
+    case "upper_arm_elev":
+      return sided((sd) => computeUpperArmFromVerticalDeg(kp, sd));
+    case "wrists_rise_both":
+      return computeBothWristsRisePct(kp);
+    case "chin_tuck_forward":
+      return computeChinTuck(kp)?.forward ?? null;
     case "forearm_dial":
       return sided((sd) => computeForearmRotationDialDeg(kp, sd));
     case "wrist_flex_ext":

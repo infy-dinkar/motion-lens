@@ -64,12 +64,28 @@ import { Inner as WristFlexionExtension } from "@/app/rehab/wrist-flexion-extens
 import { Inner as WristFlexorExtensorStretch } from "@/app/rehab/wrist-flexor-extensor-stretch/page";
 import { Inner as PronationSupination } from "@/app/rehab/pronation-supination/page";
 import { Inner as WristCurls } from "@/app/rehab/wrist-curls/page";
+import { Inner as ChinTuck } from "@/app/rehab/chin-tuck/page";
+import { Inner as GazeStability } from "@/app/rehab/gaze-stability/page";
+import { Inner as WallAngels } from "@/app/rehab/wall-angels/page";
+import { Inner as Walking } from "@/app/rehab/walking/page";
+import { Inner as LateralBandWalk } from "@/app/rehab/lateral-band-walk/page";
+import { Inner as FullCanScaption } from "@/app/rehab/full-can-scaption/page";
+import { Inner as BandIrAtSide } from "@/app/rehab/band-ir-at-side/page";
+import { Inner as SerratusPunch } from "@/app/rehab/serratus-punch/page";
+import { Inner as BallToss } from "@/app/rehab/ball-toss/page";
+import { Inner as BodybladeHold } from "@/app/rehab/bodyblade-hold/page";
+import { Inner as SideLyingHipAbduction } from "@/app/rehab/side-lying-hip-abduction/page";
 import { Inner as DartThrowersMotion } from "@/app/rehab/dart-throwers-motion/page";
 import { Inner as EccentricWristFlexion } from "@/app/rehab/eccentric-wrist-flexion/page";
 import { Inner as EccentricWristExtension } from "@/app/rehab/eccentric-wrist-extension/page";
 import { Inner as TowelIrStretch } from "@/app/rehab/towel-ir-stretch/page";
 import { Inner as FoamRollerThoracicExtension } from "@/app/rehab/foam-roller-thoracic-extension/page";
 import { Inner as HeelProp } from "@/app/rehab/heel-prop/page";
+import { Inner as ShortArcQuads } from "@/app/rehab/short-arc-quads/page";
+import { Inner as StationaryCycling } from "@/app/rehab/stationary-cycling/page";
+import { Inner as LegPress } from "@/app/rehab/leg-press/page";
+import { Inner as StepUpsStepDowns } from "@/app/rehab/step-ups-step-downs/page";
+import { Inner as AgilityHops } from "@/app/rehab/agility-hops/page";
 import { Inner as ItBandStretch } from "@/app/rehab/it-band-stretch/page";
 import { Inner as SingleLegBridge } from "@/app/rehab/single-leg-bridge/page";
 import { Inner as BridgeOnHeels } from "@/app/rehab/bridge-on-heels/page";
@@ -167,12 +183,28 @@ export const REHAB_EXERCISE_COMPONENTS: Record<string, RehabExerciseComponent> =
   "wrist-flexor-extensor-stretch": WristFlexorExtensorStretch,
   "pronation-supination": PronationSupination,
   "wrist-curls": WristCurls,
+  "chin-tuck": ChinTuck,
+  "gaze-stability": GazeStability,
+  "wall-angels": WallAngels,
+  "walking": Walking,
+  "lateral-band-walk": LateralBandWalk,
+  "full-can-scaption": FullCanScaption,
+  "band-ir-at-side": BandIrAtSide,
+  "serratus-punch": SerratusPunch,
+  "ball-toss": BallToss,
+  "bodyblade-hold": BodybladeHold,
+  "side-lying-hip-abduction": SideLyingHipAbduction,
   "dart-throwers-motion": DartThrowersMotion,
   "eccentric-wrist-flexion": EccentricWristFlexion,
   "eccentric-wrist-extension": EccentricWristExtension,
   "towel-ir-stretch": TowelIrStretch,
   "foam-roller-thoracic-extension": FoamRollerThoracicExtension,
   "heel-prop": HeelProp,
+  "short-arc-quads": ShortArcQuads,
+  "stationary-cycling": StationaryCycling,
+  "leg-press": LegPress,
+  "step-ups-step-downs": StepUpsStepDowns,
+  "agility-hops": AgilityHops,
   "it-band-stretch": ItBandStretch,
   "single-leg-bridge": SingleLegBridge,
   "bridge-on-heels": BridgeOnHeels,

@@ -983,3 +983,127 @@ export function computeForearmRotationDialDeg(keypoints: Keypoint[], side: "left
   const outward = Math.sign(own.x - oth.x) || 1;
   return vx * outward >= 0 ? mag : -mag;
 }
+
+/** Chin tuck, side-on, from the side the camera sees more clearly:
+ *    forward — shoulder → ear line from vertical (computeForwardHead
+ *              OffsetDeg); drops as the head slides back.
+ *    pitch   — ear → nose line below the horizontal, degrees, SIGNED
+ *              (+ nose lower than the ear); rises when the head NODS
+ *              down, which is not a tuck.
+ *  Null when no side has the ear and shoulder (and the nose) seen. */
+export function computeChinTuck(keypoints: Keypoint[]): { forward: number; pitch: number } | null {
+  const nose = keypoints[LM.NOSE];
+  if (!nose || (nose.score ?? 0) < VIS_THRESHOLD) return null;
+  let best: { forward: number; pitch: number; score: number } | null = null;
+  for (const side of ["left", "right"] as const) {
+    const ear = keypoints[side === "left" ? LM.LEFT_EAR : LM.RIGHT_EAR];
+    const sh = keypoints[side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER];
+    if (!ear || !sh || (ear.score ?? 0) < VIS_THRESHOLD || (sh.score ?? 0) < VIS_THRESHOLD) continue;
+    const forward = computeForwardHeadOffsetDeg(keypoints, side);
+    if (forward === null) continue;
+    const dx = Math.abs(nose.x - ear.x);
+    if (dx < 1) continue;
+    // Image y grows downward: a nose below the ear has the larger y.
+    const pitch = (Math.atan2(nose.y - ear.y, dx) * 180) / Math.PI;
+    const score = Math.min(ear.score ?? 0, sh.score ?? 0);
+    if (!best || score > best.score) best = { forward, pitch, score };
+  }
+  return best ? { forward: best.forward, pitch: best.pitch } : null;
+}
+
+/** Wall angels, from the front: the mean of both wrists' height above
+ *  their shoulders, as a percentage of the trunk (computeWristRiseRatio
+ *  ×100 per side). ~40–50 in the "W" (elbows at shoulder height), ~100+
+ *  in the "Y" (arms overhead). Uses one side when only one is seen; null
+ *  when neither is. */
+export function computeBothWristsRisePct(keypoints: Keypoint[]): number | null {
+  const vals = (["left", "right"] as const)
+    .map((sd) => computeWristRiseRatio(keypoints, sd))
+    .filter((v): v is number => v !== null);
+  if (vals.length === 0) return null;
+  return (vals.reduce((a, b) => a + b, 0) / vals.length) * 100;
+}
+
+/** Walking, side-on: how far apart the two knees are front-to-back,
+ *  SIGNED — (left knee x − right knee x) / thigh length (mean hip →
+ *  knee). ~0 standing, alternating sign with each step as the legs pass
+ *  each other. Knees only, no ankles. Null when a hip or knee is unseen. */
+export function computeKneeStrideRatio(keypoints: Keypoint[]): number | null {
+  const lh = keypoints[LM.LEFT_HIP], rh = keypoints[LM.RIGHT_HIP];
+  const lk = keypoints[LM.LEFT_KNEE], rk = keypoints[LM.RIGHT_KNEE];
+  if ([lh, rh, lk, rk].some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) return null;
+  const thigh = (Math.hypot(lk.x - lh.x, lk.y - lh.y) + Math.hypot(rk.x - rh.x, rk.y - rh.y)) / 2;
+  if (thigh < 1) return null;
+  return (lk.x - rk.x) / thigh;
+}
+
+/** Hip mid-point's image y (pixels), or null when a hip is unseen. */
+export function computeHipMidY(keypoints: Keypoint[]): number | null {
+  const lHip = keypoints[LM.LEFT_HIP];
+  const rHip = keypoints[LM.RIGHT_HIP];
+  if (!lHip || !rHip) return null;
+  if ((lHip.score ?? 0) < VIS_THRESHOLD || (rHip.score ?? 0) < VIS_THRESHOLD) return null;
+  return (lHip.y + rHip.y) / 2;
+}
+
+/** Internal rotation at the side, from the front, elbow tucked at 90°:
+ *  how far the wrist has swung IN toward the body's midline from the
+ *  elbow, as a percentage of the forearm (elbow → wrist). ~0 with the
+ *  forearm pointing at the camera, rising as the hand comes across the
+ *  belly; negative swinging out. "In" comes from the shoulders, so
+ *  either arm works. Null when the elbow, wrist or a shoulder is unseen. */
+export function computeForearmInwardPct(keypoints: Keypoint[], side: "left" | "right"): number | null {
+  const own = keypoints[side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER];
+  const oth = keypoints[side === "left" ? LM.RIGHT_SHOULDER : LM.LEFT_SHOULDER];
+  const e = keypoints[side === "left" ? LM.LEFT_ELBOW : LM.RIGHT_ELBOW];
+  const w = keypoints[side === "left" ? LM.LEFT_WRIST : LM.RIGHT_WRIST];
+  if ([own, oth, e, w].some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) return null;
+  const sh = Math.hypot(own.x - e.x, own.y - e.y);
+  if (sh < 1) return null;
+  const inward = Math.sign(oth.x - own.x) || 1;
+  // Scale by the upper arm (the forearm foreshortens toward the camera).
+  return (((w.x - e.x) * inward) / sh) * 100;
+}
+
+/** Supine serratus punch, side-on: the wrist's height above the hip
+ *  line, as a percentage of the trunk (shoulder → hip), from the side the
+ *  camera sees more clearly. The arm points at the ceiling; punching
+ *  (the shoulder blade lifting off the floor) raises it a few points.
+ *  Null when no side has the shoulder, hip and wrist seen. */
+export function computePunchReachPct(keypoints: Keypoint[]): number | null {
+  let best: { v: number; score: number } | null = null;
+  for (const side of ["left", "right"] as const) {
+    const s = keypoints[side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER];
+    const h = keypoints[side === "left" ? LM.LEFT_HIP : LM.RIGHT_HIP];
+    const w = keypoints[side === "left" ? LM.LEFT_WRIST : LM.RIGHT_WRIST];
+    if ([s, h, w].some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) continue;
+    const torso = Math.hypot(s.x - h.x, s.y - h.y);
+    if (torso < 1) continue;
+    // Image y grows downward: a wrist above the hip has the smaller y.
+    const v = ((h.y - w.y) / torso) * 100;
+    const score = Math.min(s.score ?? 0, h.score ?? 0, w.score ?? 0);
+    if (!best || score > best.score) best = { v, score };
+  }
+  return best ? best.v : null;
+}
+
+/** Ball toss, side-on: how far the wrist is in front of (or behind) the
+ *  shoulder horizontally, as a percentage of the upper arm (shoulder →
+ *  elbow), unsigned — so either facing works. ~30–60 with the ball at the
+ *  chest, ~150–200 with the arms thrown out. Side seen more clearly.
+ *  Null when no side has the shoulder, elbow and wrist seen. */
+export function computeWristReachPct(keypoints: Keypoint[]): number | null {
+  let best: { v: number; score: number } | null = null;
+  for (const side of ["left", "right"] as const) {
+    const s = keypoints[side === "left" ? LM.LEFT_SHOULDER : LM.RIGHT_SHOULDER];
+    const e = keypoints[side === "left" ? LM.LEFT_ELBOW : LM.RIGHT_ELBOW];
+    const w = keypoints[side === "left" ? LM.LEFT_WRIST : LM.RIGHT_WRIST];
+    if ([s, e, w].some((k) => !k || (k.score ?? 0) < VIS_THRESHOLD)) continue;
+    const upper = Math.hypot(s.x - e.x, s.y - e.y);
+    if (upper < 1) continue;
+    const v = (Math.abs(w.x - s.x) / upper) * 100;
+    const score = Math.min(s.score ?? 0, e.score ?? 0, w.score ?? 0);
+    if (!best || score > best.score) best = { v, score };
+  }
+  return best ? best.v : null;
+}

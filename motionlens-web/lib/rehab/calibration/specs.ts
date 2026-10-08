@@ -125,6 +125,22 @@ export type CalibSignal =
   | "wrist_flex_ext"
   /** Pronation/supination, front, forearm toward the camera: pinky→thumb line from up, + supination (computeForearmRotationDialDeg). */
   | "forearm_dial"
+  /** Chin tuck: shoulder → ear line from vertical, side seen better (computeChinTuck). */
+  | "chin_tuck_forward"
+  /** Wall angels: both wrists above the shoulders, % of the trunk, front (computeBothWristsRisePct). */
+  | "wrists_rise_both"
+  /** Arm raise: upper arm (shoulder → elbow) from straight down, degrees (computeUpperArmFromVerticalDeg). */
+  | "upper_arm_elev"
+  /** Walking: knees apart front-to-back, |ratio| ×100 of the thigh (computeKneeStrideRatio). */
+  | "knee_stride"
+  /** Step-ups: hip mid-point height as a share of the frame, ×100 (up = higher) (computeHipMidY). */
+  | "hip_mid_y_norm"
+  /** Band IR: wrist swung in toward the midline, % of the upper arm, front (computeForearmInwardPct). */
+  | "forearm_inward"
+  /** Serratus punch: wrist above the hip line, % of the trunk, side-on supine (computePunchReachPct). */
+  | "punch_reach"
+  /** Ball toss: wrist in front of the shoulder, % of the upper arm, side-on (computeWristReachPct). */
+  | "wrist_reach"
   /** Side-lying ER: forearm angle from straight down, from the front (computeForearmFromDownDeg). */
   | "forearm_from_down"
   /** 180 − elbow interior angle: 0 straight, up as the elbow bends. */
@@ -636,6 +652,20 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     ],
     note: "Calibration reads the unsigned nose-offset rotation; the page counts reps on the baseline-corrected rotation captured at go-live.",
   },
+  "gaze-stability": {
+    slug: "gaze-stability",
+    view: "frontal", posture: "seated", sided: false,
+    parts: [{ part: "NOSE", side: "any" }, B("EAR"), B("SHOULDER")],
+    scaleRef: "shoulderWidth",
+    signal: "neck_rotation", signalSide: "none", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Turn your head to one side, eyes on the target",
+    holds: [
+      rest("Sit facing the camera, eyes on a target at eye level."),
+      range("Keeping your eyes on the target, turn the head to one side, and hold."),
+    ],
+    note: "Rehab gaze stability (head turns with the eyes fixed). Same signal as cervical rotation; smaller turns (25°). Where the eyes look is not seen; no laser pointer.",
+  },
   "self-snag": {
     slug: "self-snag",
     view: "frontal", posture: "seated", sided: false,
@@ -851,6 +881,147 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     signal: "trunk_extension", signalSide: "none", unit: "deg",
     holds: [STAND_TALL, range("Arch gently backward as far as is comfortable, and hold.")],
   },
+  "chin-tuck": {
+    slug: "chin-tuck",
+    view: "side", posture: "seated", sided: false,
+    parts: [A("EAR"), A("SHOULDER"), { part: "NOSE", side: "any" }],
+    scaleRef: "torso",
+    signal: "chin_tuck_forward", signalSide: "none", unit: "deg",
+    // The ear comes back over the shoulder: the angle DROPS.
+    rangeDirection: "lower",
+    wrongWayMessage: "Draw the chin straight back",
+    holds: [
+      rest("Sit tall, side-on to the camera, looking straight ahead."),
+      range("Draw the chin straight back — eyes level, no nod — and hold."),
+    ],
+    note: "Rehab chin tuck (also wall-standing). Shoulder → ear line from vertical, side seen better. A gate blocks a nod (nose dropped below the ear) on the range hold.",
+  },
+  "wall-angels": {
+    slug: "wall-angels",
+    view: "frontal", posture: "standing", sided: false,
+    parts: [B("SHOULDER"), B("ELBOW"), B("WRIST"), B("HIP")],
+    scaleRef: "shoulderWidth",
+    signal: "wrists_rise_both", signalSide: "none", unit: "ratio",
+    rangeDirection: "higher",
+    wrongWayMessage: "Slide both arms up the wall",
+    holds: [
+      rest("Back to the wall, facing the camera, arms in a 'W' — elbows at shoulder height."),
+      range("Slide both arms up the wall into a 'Y', and hold."),
+    ],
+    note: "Rehab wall angels. Both wrists' height above the shoulders (% of the trunk). No arms-level check (defaults: no extra posture checks).",
+  },
+  "full-can-scaption": {
+    slug: "full-can-scaption",
+    view: "frontal", posture: "standing", sided: true,
+    parts: [W("SHOULDER"), W("ELBOW"), B("HIP")],
+    scaleRef: "shoulderWidth",
+    signal: "upper_arm_elev", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Raise the arm up to shoulder height",
+    holds: [
+      rest("Face the camera, arm down by your side, thumb up."),
+      range("Raise the arm slightly forward (thumb up) to shoulder height, and hold."),
+    ],
+    note: "Rehab full-can scaption. Upper arm from straight down, from the front. The 30° forward plane and the thumb-up hand are not seen. No elbow check (defaults).",
+  },
+  "walking": {
+    slug: "walking",
+    view: "side", posture: "standing", sided: false,
+    parts: [B("HIP"), B("KNEE")],
+    scaleRef: "thigh",
+    signal: "knee_stride", signalSide: "none", unit: "ratio",
+    rangeDirection: "higher",
+    wrongWayMessage: "Take a normal step forward",
+    holds: [
+      rest("Stand side-on to the camera, feet together."),
+      range("Take one normal step forward and hold it."),
+    ],
+    note: "Rehab walking / gait. Knees front-to-back apart (% of the thigh); the page counts each step as the stride flips sign (lib/rehab/zoneCounter). Walking to and fro past the camera.",
+  },
+  "lateral-band-walk": {
+    slug: "lateral-band-walk",
+    view: "frontal", posture: "standing", sided: false,
+    parts: [B("HIP"), B("KNEE")],
+    scaleRef: "hipWidth",
+    signal: "knee_spread", signalSide: "none", unit: "ratio",
+    rangeDirection: "higher",
+    wrongWayMessage: "Step out to the side against the band",
+    holds: [
+      rest("Band above the knees, facing the camera, slight squat, feet hip-width."),
+      range("Step out wide to the side against the band, and hold."),
+    ],
+    note: "Rehab lateral band walk (side walk only, no monster walk). Knee gap / hip width; each widen-and-close is one step (lib/rehab/bothEndsCounter), whichever way the patient walks. Separate from the original Lateral Step (H6), which is untouched. The band is not seen.",
+  },
+  "step-ups-step-downs": {
+    slug: "step-ups-step-downs",
+    view: "side", posture: "standing", sided: true,
+    parts: [B("HIP"), W("KNEE")],
+    scaleRef: "torso",
+    signal: "hip_mid_y_norm", signalSide: "none", unit: "ratio",
+    rangeDirection: "higher",
+    wrongWayMessage: "Step up onto the step",
+    holds: [
+      rest("Stand on the floor beside the step, side-on to the camera."),
+      range("Step up with the chosen leg and stand tall on the step, and hold."),
+    ],
+    note: "Rehab step-ups then step-downs on one page. Hip height (frame share) between the floor and the step; reaching both is a rep (lib/rehab/bothEndsCounter) — 10 up, then 10 down (heel tap). Separate from the original Step-Up Control (K4), which is untouched.",
+  },
+  "band-ir-at-side": {
+    slug: "band-ir-at-side",
+    view: "frontal", posture: "standing", sided: true,
+    parts: [B("SHOULDER"), W("ELBOW"), W("WRIST")],
+    scaleRef: "shoulderWidth",
+    signal: "forearm_inward", signalSide: "working", unit: "ratio",
+    rangeDirection: "higher",
+    wrongWayMessage: "Pull the hand in toward your belly",
+    holds: [
+      rest("Face the camera, elbow at your side bent 90°, forearm pointing forward, band in the hand."),
+      range("Pull the hand in across your belly, elbow at your side, and hold."),
+    ],
+    note: "Rehab band internal rotation at the side (weaker exercise: the hand crosses in front of the body and may be hidden; the band is not seen). Wrist swung in from the elbow, % of the upper arm.",
+  },
+  "serratus-punch": {
+    slug: "serratus-punch",
+    view: "side", posture: "supine", sided: false,
+    parts: [A("SHOULDER"), A("HIP"), A("WRIST")],
+    scaleRef: "torso",
+    signal: "punch_reach", signalSide: "none", unit: "ratio",
+    rangeDirection: "higher",
+    wrongWayMessage: "Punch up toward the ceiling — lift the shoulder blade",
+    holds: [
+      rest("Lie on your back, side-on to the camera, arm straight up toward the ceiling, shoulder relaxed."),
+      range("Punch up — lift the shoulder blade off the floor, elbow straight — and hold."),
+    ],
+    note: "Rehab serratus punch (supine). Wrist above the hip line, % of the trunk; the page counts the rise from the calibrated rest. A weaker exercise: the movement is a few points only.",
+  },
+  "ball-toss": {
+    slug: "ball-toss",
+    view: "side", posture: "standing", sided: false,
+    parts: [A("SHOULDER"), A("ELBOW"), A("WRIST")],
+    scaleRef: "torso",
+    signal: "wrist_reach", signalSide: "none", unit: "ratio",
+    rangeDirection: "higher",
+    wrongWayMessage: "Push the ball out — arms straight",
+    holds: [
+      rest("Stand side-on to the camera facing a wall or rebounder, ball at your chest."),
+      range("Push the arms out as if throwing — arms straight — and hold."),
+    ],
+    note: "Rehab plyometric ball toss (late stage). Wrist in front of the shoulder (% of the upper arm); each throw-out-and-catch between the calibrated ends is one toss (lib/rehab/bothEndsCounter). The ball and the catch are not seen.",
+  },
+  "bodyblade-hold": {
+    slug: "bodyblade-hold",
+    view: "side", posture: "standing", sided: true,
+    parts: [W("SHOULDER"), W("ELBOW"), W("HIP")],
+    scaleRef: "torso",
+    signal: "upper_arm_elev", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Raise the arm forward to shoulder height",
+    holds: [
+      rest("Stand side-on to the camera, arm down by your side."),
+      range("Raise the arm straight forward to shoulder height, and hold."),
+    ],
+    note: "Rehab Bodyblade / rhythmic stabilisation hold: the arm held up in front for 30 s while the blade oscillates (or a partner perturbs). Only the arm position is read; the blade and the oscillation are not seen.",
+  },
   "posture-hold": {
     slug: "posture-hold",
     view: "side", posture: "standing", sided: true,
@@ -970,6 +1141,48 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
     ],
     note: "Rehab heel prop. Lines are in the patient's own flexion (lib/rehab/flexionLines): calibrated range + 3°, never a fixed straight — a knee rarely reads 0° on camera.",
   },
+  "short-arc-quads": {
+    slug: "short-arc-quads",
+    view: "side", posture: "supine", sided: true,
+    parts: [W("HIP"), W("KNEE"), W("ANKLE")],
+    scaleRef: "thigh",
+    signal: "knee_flexion", signalSide: "working", unit: "deg",
+    rangeDirection: "lower",
+    wrongWayMessage: "Lift the heel and straighten the knee",
+    holds: [
+      rest("Lie on your back, a rolled towel under the chosen knee, heel resting down."),
+      range("Lift the heel and straighten the knee over the roll, and hold."),
+    ],
+    note: "Rehab short arc quads (supine only; no standing band TKE — user's choice). Separate from the original Terminal Knee Extension (K3), which is untouched. Lines in the patient's own flexion (lib/rehab/flexionLines).",
+  },
+  "stationary-cycling": {
+    slug: "stationary-cycling",
+    view: "side", posture: "seated", sided: true,
+    parts: [W("HIP"), W("KNEE"), W("ANKLE")],
+    scaleRef: "thigh",
+    signal: "knee_flexion", signalSide: "working", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Bring that pedal to the top",
+    holds: [
+      rest("On the bike, side-on to the camera, the near pedal at the BOTTOM (knee straightest)."),
+      range("Now bring the near pedal to the TOP (knee most bent), and hold."),
+    ],
+    note: "Rehab stationary cycling. Knee flexion of the leg nearest the camera; each bend-and-straighten between the calibrated ends is one pedal revolution (lib/rehab/bothEndsCounter). The set runs for SESSION_SEC.",
+  },
+  "leg-press": {
+    slug: "leg-press",
+    view: "side", posture: "seated", sided: false,
+    parts: [A("HIP"), A("KNEE"), A("ANKLE")],
+    scaleRef: "thigh",
+    signal: "knee_flexion", signalSide: "any", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Bend the knees — let the plate come toward you",
+    holds: [
+      rest("On the leg press, side-on to the camera, legs pushed out (knees nearly straight)."),
+      range("Bend the knees to your working depth, and hold."),
+    ],
+    note: "Rehab leg press (both legs, limited range). Knee flexion of the knee seen better; a rep is bending past a personal line and pushing back out. The machine may hide part of the leg.",
+  },
   "heel-slides": {
     slug: "heel-slides",
     view: "side", posture: "supine", sided: true,
@@ -1086,6 +1299,20 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
       range("Keeping the feet together, open the top knee as far as is comfortable, and hold."),
     ],
     note: "Side-lying, the front of the body to a floor-level camera ('supine' only for the floor-level camera messages). Side picked on the page = the top (working) leg. The range hold sets the page's personal line (85% of it).",
+  },
+  "side-lying-hip-abduction": {
+    slug: "side-lying-hip-abduction",
+    view: "frontal", posture: "supine", sided: false,
+    parts: [B("HIP"), B("KNEE")],
+    scaleRef: "torso",
+    signal: "knee_opening", signalSide: "none", unit: "deg",
+    rangeDirection: "higher",
+    wrongWayMessage: "Lift the top leg up, knee straight",
+    holds: [
+      rest("Lie on your side, front of the body to the camera, legs together, the top leg straight."),
+      range("Lift the top leg up as far as is comfortable, knee straight, and hold."),
+    ],
+    note: "Rehab side-lying hip abduction. Same signal as clamshell (angle between the thighs at the hip-mid), camera in front of the body at floor level. Side picked = the top leg. No knee check (defaults).",
   },
   "piriformis-stretch": {
     slug: "piriformis-stretch",
@@ -1416,6 +1643,18 @@ export const CALIBRATION_SPECS: Record<string, CalibrationSpec> = {
       range("Hop across the line, land on the same leg, and hold."),
     ],
     note: "Rehab lateral hops. Rest and range are the two landing spots (either order); the page counts each arrival in the other spot (lib/rehab/zoneCounter). A gate keeps the other knee up (knees, not ankles).",
+  },
+  "agility-hops": {
+    slug: "agility-hops",
+    view: "frontal", posture: "standing", sided: false,
+    parts: [B("HIP"), B("KNEE")],
+    scaleRef: "hipWidth",
+    signal: "hip_mid_x_norm", signalSide: "none", unit: "ratio",
+    holds: [
+      rest("Stand on both feet on one side of a line, facing the camera."),
+      range("Hop with both feet across the line and hold."),
+    ],
+    note: "Rehab agility: side-to-side two-foot hops (late stage). Rest and range are the two landing spots (either order); each arrival in the other spot's zone is a hop (lib/rehab/zoneCounter). Separate from Lateral Hops (one leg). Cutting quality is not judged.",
   },
   "weight-shift": {
     slug: "weight-shift",

@@ -286,6 +286,86 @@ export const REHAB_EXERCISES = [
     iconTone: "text-indigo-500",
     tone: "from-indigo-500/15 to-indigo-500/5",
   },
+  {
+    slug: "short-arc-quads",
+    issues: ["K1", "K2", "K3", "K9", "K10"],
+    code: "K15",
+    joint: "knee",
+    title: "Short Arc Quads",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Lying on the back, side-on camera, a rolled towel under the knee: lift the heel to straighten the knee, hold 3 s, lower. A rep is one held straightening, read from knee flexion against the patient's own calibrated extension + 3°. Separate from Terminal Knee Extension. Counts reps, one knee.",
+    patientBody:
+      "Towel roll under the knee: lift the heel, hold, lower. Counts reps.",
+    icon: Activity,
+    iconTone: "text-indigo-500",
+    tone: "from-indigo-500/15 to-indigo-500/5",
+  },
+  {
+    slug: "stationary-cycling",
+    issues: ["K1", "K2", "K3", "K4", "K9", "H1", "H3", "H7", "L1", "L4", "L8"],
+    code: "K16",
+    joint: "knee",
+    title: "Stationary Cycling",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Pedalling a stationary bike for 2 minutes, side-on camera: each pedal revolution is counted from the near knee bending and straightening between the calibrated pedal-bottom and pedal-top positions. Counts revolutions.",
+    patientBody:
+      "Pedal for 2 minutes. Counts revolutions.",
+    icon: Activity,
+    iconTone: "text-indigo-500",
+    tone: "from-indigo-500/15 to-indigo-500/5",
+  },
+  {
+    slug: "leg-press",
+    issues: ["K1", "K2", "K3", "K7"],
+    code: "K17",
+    joint: "knee",
+    title: "Leg Press",
+    mechanic: "rep_count",
+    needsSide: false,
+    publicBody:
+      "On a leg-press machine, side-on camera, both legs: bend the knees to the working depth, pause, push back out. A rep is the knee bend passing a personal line (85% of the calibrated depth) and coming back. Counts reps.",
+    patientBody:
+      "Leg press, limited range. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-indigo-500",
+    tone: "from-indigo-500/15 to-indigo-500/5",
+  },
+  {
+    slug: "step-ups-step-downs",
+    issues: ["K1", "K2", "K3", "K4", "K9", "H1", "H7", "H8"],
+    code: "K18",
+    joint: "knee",
+    title: "Step-ups / Step-downs",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Side-on camera beside a low step: 10 step-ups with the chosen leg, then 10 step-downs (heel taps) standing on it. A rep is the hip travelling between the calibrated floor and step heights and back, so the body must really go up onto the step. Separate from Step-Up Control. Counts reps, one leg.",
+    patientBody:
+      "10 step-ups, then 10 step-downs. Counts reps.",
+    icon: Footprints,
+    iconTone: "text-indigo-500",
+    tone: "from-indigo-500/15 to-indigo-500/5",
+  },
+  {
+    slug: "agility-hops",
+    issues: ["K3", "K4", "K5", "K6", "K10"],
+    code: "K19",
+    joint: "knee",
+    title: "Agility Hops",
+    mechanic: "rep_count",
+    needsSide: false,
+    publicBody:
+      "Return-to-sport agility: facing the camera, hop with both feet across a line and back. The two calibrated landing spots become zones; each landing in the other zone is a hop (the middle is ignored). Separate from the one-leg Lateral Hops; cutting quality is not judged. Counts hops.",
+    patientBody:
+      "Two-foot hops side to side over a line. Counts hops.",
+    icon: Footprints,
+    iconTone: "text-indigo-500",
+    tone: "from-indigo-500/15 to-indigo-500/5",
+  },
 
 
 
@@ -529,6 +609,54 @@ export const REHAB_EXERCISES = [
     patientBody:
       "Side-lying knee openings, feet together. Counts reps.",
     icon: Activity,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
+  },
+  {
+    slug: "side-lying-hip-abduction",
+    issues: ["H1", "H2", "H7", "H8", "K2", "K8", "K10"],
+    code: "H23",
+    joint: "hip",
+    title: "Side-Lying Hip Abduction",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Side-lying, the front of the body to a floor-level camera, top leg straight: lift it up, pause, lower slowly. A rep is the angle between the thighs passing a personal line (85% of the calibrated lift) and coming back. Counts reps, top leg.",
+    patientBody:
+      "Lying on your side, lift the top leg and lower it. Counts reps.",
+    icon: Activity,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
+  },
+  {
+    slug: "walking",
+    issues: ["L1", "L4", "L8", "H7", "H8", "A3", "A5", "A7", "C7"],
+    code: "H24",
+    joint: "hip",
+    title: "Walking",
+    mechanic: "rep_count",
+    needsSide: false,
+    publicBody:
+      "Walking to and fro past a side-on camera, with a walker or cane if used. Each step is counted from the knees passing each other (knees only); gait quality is not judged. Counts steps.",
+    patientBody:
+      "Walk to and fro past the camera. Counts steps.",
+    icon: Footprints,
+    iconTone: "text-rose-500",
+    tone: "from-rose-500/15 to-rose-500/5",
+  },
+  {
+    slug: "lateral-band-walk",
+    issues: ["H1", "H2", "H3", "H4", "K2", "K8", "K10"],
+    code: "H25",
+    joint: "hip",
+    title: "Lateral Band Walk",
+    mechanic: "rep_count",
+    needsSide: false,
+    publicBody:
+      "Facing the camera, a band above the knees, slight squat: side-steps across and back (side walk only). Each step out and in is counted from the knee gap (knee distance over hip width) between the calibrated stance and wide step, whichever way the patient walks. The band is not seen. Separate from Lateral Step. Counts steps.",
+    patientBody:
+      "Band above the knees, step sideways across and back. Counts steps.",
+    icon: Footprints,
     iconTone: "text-rose-500",
     tone: "from-rose-500/15 to-rose-500/5",
   },  {
@@ -860,6 +988,22 @@ export const REHAB_EXERCISES = [
     iconTone: "text-teal-500",
     tone: "from-teal-500/15 to-teal-500/5",
   },
+  {
+    slug: "wall-angels",
+    issues: ["T1", "T4"],
+    code: "B19",
+    joint: "back",
+    title: "Wall Angels",
+    mechanic: "rep_count",
+    needsSide: false,
+    publicBody:
+      "Back to a wall, facing the camera, arms in a W: slide both arms up into a Y, pause, slide back down. A rep is the arms passing a personal line (85% of the calibrated Y) and coming back down. Counts reps, both arms.",
+    patientBody:
+      "Slide your arms up and down the wall, W to Y. Counts reps.",
+    icon: Activity,
+    iconTone: "text-teal-500",
+    tone: "from-teal-500/15 to-teal-500/5",
+  },
 
 
 
@@ -1159,6 +1303,86 @@ export const REHAB_EXERCISES = [
       "Back to the camera, towel over the shoulder from the top hand, the chosen hand holding it behind the waist: pull with the top hand to slide the lower hand up the back, hold 30 s. A rep is one held stretch, read from how far the wrist is above the hip (% of the trunk) against a personal line (85% of the calibrated reach). Counts holds, one arm.",
     patientBody:
       "Towel behind the back, pull the lower hand up, held 30 s. Counts holds.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },
+  {
+    slug: "full-can-scaption",
+    issues: ["S1", "S2", "S7"],
+    code: "S22",
+    joint: "shoulder",
+    title: "Full-Can Scaption",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Facing the camera, the arm raised slightly in front of the body with the thumb up and the elbow straight, to shoulder height, then lowered. A rep is the upper arm passing a personal line (85% of the calibrated raise) and coming down. The forward plane and thumb position are not seen. Counts reps, one arm.",
+    patientBody:
+      "Raise the arm, thumb up, to shoulder height. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },
+  {
+    slug: "band-ir-at-side",
+    issues: ["S1", "S2", "S4", "S5", "S7", "S8"],
+    code: "S23",
+    joint: "shoulder",
+    title: "Band IR at Side",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Facing the camera, elbow tucked at the side bent 90°, band in the hand: pull the hand in across the belly, pause, let it back out. A rep is the wrist swinging in past a personal line (85% of the calibrated swing) and back. The band is not seen and the hand may be hidden in front of the body. Counts reps, one arm.",
+    patientBody:
+      "Elbow at your side: pull the band in across your belly. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },
+  {
+    slug: "serratus-punch",
+    issues: ["S1", "S4", "S6", "S9"],
+    code: "S24",
+    joint: "shoulder",
+    title: "Serratus Punch",
+    mechanic: "rep_count",
+    needsSide: false,
+    publicBody:
+      "Lying on the back, side-on camera, arm straight up: punch toward the ceiling so the shoulder blade lifts, hold 2 s, let down. A rep is the wrist rising past a personal line above the calibrated rest (85% of the calibrated punch). The movement is small. Counts reps.",
+    patientBody:
+      "Arm up, punch toward the ceiling and hold. Counts reps.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },
+  {
+    slug: "ball-toss",
+    issues: ["S4", "S5"],
+    code: "S25",
+    joint: "shoulder",
+    title: "Ball Toss",
+    mechanic: "rep_count",
+    needsSide: false,
+    publicBody:
+      "Late-stage plyometric: side-on camera, two-hand ball toss against a wall or rebounder. Each throw (arms out) and catch (back to the chest) between the calibrated ends is one toss. The ball and the catch are not seen. Counts tosses.",
+    patientBody:
+      "Throw and catch a ball against a wall. Counts tosses.",
+    icon: Dumbbell,
+    iconTone: "text-amber-500",
+    tone: "from-amber-500/15 to-amber-500/5",
+  },
+  {
+    slug: "bodyblade-hold",
+    issues: ["S4", "S5"],
+    code: "S26",
+    joint: "shoulder",
+    title: "Bodyblade Hold",
+    mechanic: "rep_count",
+    needsSide: true,
+    publicBody:
+      "Bodyblade / rhythmic stabilisation: side-on camera, the arm held up in front at shoulder height for 30 s while the blade oscillates (or a partner perturbs). A rep is one 30 s hold above a personal line (85% of the calibrated raise). Only the arm position is read. Counts holds, one arm.",
+    patientBody:
+      "Hold the arm up steady for 30 s with the Bodyblade. Counts holds.",
     icon: Dumbbell,
     iconTone: "text-amber-500",
     tone: "from-amber-500/15 to-amber-500/5",
@@ -1626,6 +1850,38 @@ export const REHAB_EXERCISES = [
       "Seated facing the camera, towel round the neck: turn the head toward the chosen side while the opposite hand pulls the towel forward, hold 3 s at end range, back to centre. Rep-Count on head rotation toward that side against a facing-forward baseline. Counts reps, one side.",
     patientBody:
       "Towel-assisted head turns to one side, held 3 s. Counts reps.",
+    icon: Activity,
+    iconTone: "text-sky-500",
+    tone: "from-sky-500/15 to-sky-500/5",
+  },
+  {
+    slug: "chin-tuck",
+    issues: ["C1", "C2", "C3", "C4", "C5", "T1", "T3", "T4"],
+    code: "C6",
+    joint: "cervical",
+    title: "Chin Tuck",
+    mechanic: "rep_count",
+    needsSide: false,
+    publicBody:
+      "Seated, standing or against a wall, side-on camera: draw the chin straight back, eyes level, hold 3 s. A rep is one held tuck, read from how far the head comes back over the shoulder against a personal line (85% of the calibrated tuck); a nod does not count. Counts reps.",
+    patientBody:
+      "Slide the head back into a double chin and hold. Counts reps.",
+    icon: Activity,
+    iconTone: "text-sky-500",
+    tone: "from-sky-500/15 to-sky-500/5",
+  },
+  {
+    slug: "gaze-stability",
+    issues: ["C4", "C5"],
+    code: "C7",
+    joint: "cervical",
+    title: "Gaze Stability",
+    mechanic: "rep_count",
+    needsSide: false,
+    publicBody:
+      "Facing the camera, eyes on a target at eye level: turn the head left and right, eyes staying on the target. Each turn of at least 25° and back is counted (cervical-rotation signal). Where the eyes look is not seen; no laser pointer. Counts head turns.",
+    patientBody:
+      "Eyes on a target, turn your head left and right. Counts turns.",
     icon: Activity,
     iconTone: "text-sky-500",
     tone: "from-sky-500/15 to-sky-500/5",

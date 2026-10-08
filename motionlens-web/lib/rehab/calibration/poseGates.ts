@@ -17,7 +17,7 @@ import { LM_LIVE as LM } from "@/lib/pose/landmarks-live";
 import type { HoldSpec } from "@/lib/rehab/calibration/specs";
 import type { Side } from "@/lib/rehab/calibration/signals";
 import { computeShoulderAngle } from "@/lib/biomech/shoulder-live";
-import { computeFreeKneeLift, computeHeelLiftDeg, computeHandToFaceRatio, computeHeadTiltTowardDeg, computeKneeGapSigned, computeRollerExtension, computeShoulderOverWrist, computeSidePlankLine, computeTrunkAngleFromHorizontal } from "@/lib/rehab/poseMetrics";
+import { computeFreeKneeLift, computeHeelLiftDeg, computeChinTuck, computeHandToFaceRatio, computeHeadTiltTowardDeg, computeKneeGapSigned, computeRollerExtension, computeShoulderOverWrist, computeSidePlankLine, computeTrunkAngleFromHorizontal } from "@/lib/rehab/poseMetrics";
 
 const VIS = 0.35;
 
@@ -584,6 +584,25 @@ const ulnarTensioner: Gate = (kp, holdId, side) => {
   return { block: null, debug };
 };
 
+// ── Chin tuck ──────────────────────────────────────────────────
+//
+// A tuck slides the head back with the eyes level; a nod tips the nose
+// down. Calibration has no baseline pitch, so the range hold uses an
+// absolute limit: the ear → nose line no more than CHIN_TUCK_PITCH_MAX
+// below horizontal (upright and level reads ~5–20°). The live page uses
+// a baseline of its own.
+export const CHIN_TUCK_PITCH_MAX = 35;
+export const CHIN_TUCK_NOD_MAX = 15;
+
+const chinTuckNoNod: Gate = (kp, holdId) => {
+  if (holdId !== "range") return NONE;
+  const m = computeChinTuck(kp as unknown as Parameters<typeof computeChinTuck>[0]);
+  if (m === null) return NONE;
+  const debug = `head pitch ${m.pitch.toFixed(0)}° (max ${CHIN_TUCK_PITCH_MAX})`;
+  if (m.pitch > CHIN_TUCK_PITCH_MAX) return { block: "Keep your eyes level — slide the head back, don't nod", debug };
+  return { block: null, debug };
+};
+
 // ── Romanian deadlift ────────────────────────────────────────────
 //
 // A squat also tips the trunk forward. In an RDL the knees stay soft:
@@ -842,6 +861,7 @@ const GATES: Record<string, Gate> = {
   "biceps-curl": elbowArom,
   "median-nerve-slider": medianSlider,
   "ulnar-nerve-tensioner": ulnarTensioner,
+  "chin-tuck": chinTuckNoNod,
   "eccentric-biceps-curl": elbowArom,
   "standing-hamstring-curl": hamstringCurl,
   "quad-stretch": hamstringCurl,
