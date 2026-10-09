@@ -130,6 +130,27 @@ Both UIs call the **identical** Python engine modules. The Next.js frontend addi
 - **Severity-graded findings** — OK / Mild / Notable color-coded per measurement with detail text
 - 100 % browser-side — photos never leave the user's device
 
+### Rehab — PDF exercise library (92 exercises)
+
+92 exercises from the physio exercise PDF are built as camera-tracked rehab games (branch `rehab-new-exercises`). Each one runs the same flow as the existing rehab exercises: pick a side (where it applies) → calibration → 3-2-1 countdown → live counting → auto-save, and each can be prescribed by the doctor and played in a prescribed session.
+
+- **Counts only** — the saved report shows reps / holds and the target; no degrees.
+- **Personal lines** — the calibration sets each patient's own "done" line.
+- **Doctor-prescribed** — these exercises are never auto-recommended; the doctor adds them in Edit.
+
+| Group | Count | Exercises |
+|---|---|---|
+| Cervical | 7 | Cervical Rotation, Cervical Side Flexion, Cervical Flexion / Extension, Upper Trapezius & Levator Stretch, Self-SNAG (Towel), Chin Tuck, Gaze Stability |
+| Shoulder | 20 | Eccentric Biceps Curl, Wall Finger Walk, Wand Shoulder Flexion (AAROM), Table Slides, Rows / Scapular Retraction, Pulley-Assisted Flexion, Side-Lying External Rotation, Cross-Body Shoulder Stretch, Serratus Wall Slide, Prone Y-T-W, Prone I-Y-T, Doorway Pec Stretch, Quadruped Weight Shift, Wall Push-Up, Towel Internal Rotation Stretch, Full-Can Scaption, Band IR at Side, Serratus Punch, Ball Toss, Bodyblade Hold |
+| Elbow | 5 | Elbow AROM, Overhead Triceps Extension, Biceps Curl, Median Nerve Slider, Ulnar Nerve Glide (Tensioner) |
+| Wrist & Hand | 7 | Wrist Flexion / Extension, Wrist Flexor & Extensor Stretch, Pronation / Supination, Dumbbell Wrist Curls, Eccentric Wrist Extension, Eccentric Wrist Flexion, Dart-Thrower's Motion |
+| Back | 13 | Knee-to-Chest Stretch, Child's Pose, McKenzie Press-up, Prone Thoracic Extension, Side Plank, Dead Bug, Open Book Rotation, Thread the Needle, Seated Thoracic Extension, McGill Curl-Up, Sciatic Nerve Slider, Thoracic Extension over Foam Roller, Wall Angels |
+| Hip | 16 | Hamstring Stretch, Sit-to-Stand, Single-Leg Bridge, Bridge on Heels, Quadruped Rock-Back, Romanian Deadlift, Hip Flexor Stretch, Single-Leg Balance, Nordic Hamstring Curl, Clamshell, Piriformis / Figure-4 Stretch, Copenhagen Adductor Plank, Supine Abduction Slides, Side-Lying Hip Abduction, Walking, Lateral Band Walk |
+| Knee | 13 | Standing Hamstring Curl, Heel Slides, Straight Leg Raise, Decline Squat, Spanish Squat, Quad Stretch, TFL / IT Band Stretch, Heel Prop, Short Arc Quads, Stationary Cycling, Leg Press, Step-ups / Step-downs, Agility Hops |
+| Ankle & Foot | 11 | Heel Raises, Seated Soleus Raise, Isometric Calf Hold, Eccentric Heel Drops, Rathleff Heel Raise, Calf Wall Stretch, Toe Raises (Tibialis Anterior), Star Excursion Balance, Single-Leg Hops, Lateral Hops, Ankle Pumps |
+
+On hold (not camera-countable today): isometrics, breathing, pelvic tilts, ankle alphabet, and the finger, toe and jaw (TMJ) exercises.
+
 ### UX layer
 
 | | Streamlit UI | Next.js + FastAPI |
